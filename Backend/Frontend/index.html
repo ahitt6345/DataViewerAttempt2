@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Company Viewer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Company Relationship Viewer</h1>
+        <div>
+            <label for="companyIdInput">Focus Company ID:</label>
+            <input type="number" id="companyIdInput" value="1">
+            <button id="loadCompanyButton">Load Data</button>
+        </div>
+    </header>
+    <div id="infoPanel">
+        <h2>Company Data:</h2>
+        <pre id="dataOutput">Load data to see details...</pre>
+    </div>
+    <div id="sceneContainer">
+        </div>
+
+    <script type="module" src="/three/build/three.module.js"></script>
+    <script type="module" src="/three/examples/jsm/controls/OrbitControls.js"></script>
+    <script type="module" src="textures/water/water.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
