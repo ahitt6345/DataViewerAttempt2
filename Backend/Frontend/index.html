@@ -11,16 +11,42 @@
         <h1>Company Relationship Viewer</h1>
         <div>
             <label for="companyIdInput">Focus Company ID:</label>
-            <input type="number" id="companyIdInput" value="1">
+            <select id="companyIdInput">
+                <!-- Options will be populated dynamically with company names as labels and IDs as values -->
+            </select>
+            <script>
+                // Example: Fetch company list from backend and populate the select
+                (async () => fetch("/api/company/getCompanyNamesAndIds")
+                    .then(res => res.json())
+                    .then(companies => { // array of company objects with id and name
+                        console.log("Companies fetched:", companies);
+                        const select = document.getElementById('companyIdInput');
+                        companies.forEach(company => {
+                            const option = document.createElement('option');
+                            option.value = company.id; // company ID as value
+                            option.textContent = company.name; // company name as label
+                            select.appendChild(option);
+                        });
+                    }))();
+            </script>
             <button id="loadCompanyButton">Load Data</button>
         </div>
     </header>
-    <div id="infoPanel">
+    <a href="/data-entry.html">Manage Data</a>
+    <!-- <div id="infoPanel">
         <h2>Company Data:</h2>
         <pre id="dataOutput">Load data to see details...</pre>
-    </div>
-    <div id="sceneContainer">
+    </div> -->
+    
+    <div id="sceneContainer" style="position: relative;">
+        <!-- Three.js canvas will be rendered here -->
+        <div id="hudLeft" style="position: absolute; top: 0; left: 0; width: 200px; height: 100%; background: rgba(0,0,0,0.5); color: #fff; padding: 10px; pointer-events: none; z-index: 10;">
+            <!-- Left HUD content (e.g., company list or info) -->
         </div>
+        <div id="hudRight" style="position: absolute; top: 0; right: 0; width: 200px; height: 100%; background: rgba(0,0,0,0.5); color: #fff; padding: 10px; pointer-events: none; z-index: 10;">
+            <!-- Right HUD content (e.g., selected company details) -->
+        </div>
+    </div>
 
     <script type="module" src="/three/build/three.module.js"></script>
     <script type="module" src="/three/examples/jsm/controls/OrbitControls.js"></script>

@@ -2,6 +2,24 @@
 import * as THREE from "/three/build/three.module.js"; // Import Three.js core
 import { OrbitControls } from "/three/examples/jsm/controls/OrbitControls.js"; // Import OrbitControls for user interaction
 import { Water } from "/textures/water/water.js"; // Import Water.js for realistic water effects
+import { FontLoader } from "/three/examples/jsm/loaders/FontLoader.js"; // Import FontLoader for text rendering
+import { TextGeometry } from "/three/examples/jsm/geometries/TextGeometry.js"; // Import TextGeometry for 3D text
+
+// Ensure the necessary Three.js modules are loaded
+// load helvetiker font for text rendering
+const fontLoader = new FontLoader();
+var helvetikerFont; // Declare globally to use in createProceduralBuilding
+fontLoader.load(
+	"fonts/helvetiker_regular.typeface.json",
+	(font) => {
+		console.log("Font loaded successfully:", font);
+		helvetikerFont = font; // Assign loaded font to global variable
+	},
+	undefined, // onProgress callback (optional)
+	(error) => {
+		console.error("Error loading font:", error);
+	}
+);
 // --- Basic Three.js Scene Setup ---
 let scene, camera, renderer; // Removed 'cube' as we'll manage objects dynamically
 let objectsInScene = []; // To keep track of dynamically added company/district objects
@@ -81,6 +99,66 @@ function loadBuildingTextures() {
 var orbitControls; // Declare globally to avoid re-creating on each frame
 function initThreeJS() {
 	const container = document.getElementById("sceneContainer");
+	const hudLeft = document.getElementById("hudLeft");
+	const hudRight = document.getElementById("hudRight");
+	container.onclick = (event) => {
+		console.log("Container clicked!");
+		// You can add custom logic here, e.g., picking objects or UI actions
+		const mouse = new THREE.Vector2();
+		const raycaster = new THREE.Raycaster();
+
+		const rect = container.getBoundingClientRect();
+		mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+		mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+		raycaster.setFromCamera(mouse, camera);
+
+		const intersects = raycaster.intersectObjects(objectsInScene, true);
+
+		if (intersects.length > 0) {
+			let mesh = intersects[0].object;
+			// Traverse up to find the building group if needed
+			while (mesh && !mesh.userData.companyDetails && mesh.parent) {
+				mesh = mesh.parent;
+			}
+			if (mesh && mesh.userData.companyDetails) {
+				console.log("Company details:", mesh.userData.companyDetails);
+				var details = mesh.userData.companyDetails;
+				// Clear previous content
+				hudLeft.innerHTML = "";
+				hudRight.innerHTML = "";
+				for (const key in details) {
+					if (details.hasOwnProperty(key)) {
+						// Fill hudLeft first, then hudRight if hudLeft is full
+						if (!hudLeft.innerHTML) hudLeft.innerHTML = "";
+						if (!hudRight.innerHTML) hudRight.innerHTML = "";
+
+						const line = `${key}: ${details[key]}<br>`;
+
+						// Create a temporary span to measure text height
+						const tempSpan = document.createElement("span");
+						tempSpan.style.visibility = "hidden";
+						tempSpan.style.position = "absolute";
+						tempSpan.style.whiteSpace = "pre-wrap";
+						tempSpan.style.width = hudLeft.clientWidth + "px";
+						tempSpan.innerHTML = hudLeft.innerHTML + line;
+						document.body.appendChild(tempSpan);
+
+						const fitsInLeft =
+							tempSpan.offsetHeight <= hudLeft.clientHeight;
+						document.body.removeChild(tempSpan);
+
+						if (fitsInLeft) {
+							hudLeft.innerHTML += line;
+						} else {
+							hudRight.innerHTML += line;
+						}
+					}
+				}
+				//hudLeft.textContent = text;
+			}
+		}
+	};
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x87ceeb); // Bright blue sky (Sky Blue)
 	loadBuildingTextures(); // Load textures before creating objects
@@ -88,9 +166,9 @@ function initThreeJS() {
 		75,
 		container.clientWidth / container.clientHeight,
 		0.1,
-		1000
+		10000
 	);
-	camera.position.set(0, 15, 20); // Adjusted camera position to look down a bit
+	camera.position.set(0, 15 * 10, 20 * 10); // Adjusted camera position to look down a bit
 	camera.lookAt(0, 0, 0);
 
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -119,7 +197,7 @@ function initThreeJS() {
 	// scene.add(shadowHelper);
 	scene.add(directionalLight);
 	// --- Create Water ---
-	const waterGeometry = new THREE.PlaneGeometry(100, 100); // Adjust size as needed
+	const waterGeometry = new THREE.PlaneGeometry(100 * 10, 100 * 10); // Adjust size as needed
 
 	if (typeof Water !== "undefined") {
 		// Check if Water.js loaded
@@ -182,8 +260,8 @@ function initThreeJS() {
 			orbitControls.enableDamping = true; // Smooth damping
 			orbitControls.dampingFactor = 0.1; // Damping factor for smooth movement
 			orbitControls.enableZoom = true; // Allow zooming
-			orbitControls.minDistance = 5; // Minimum zoom distance
-			orbitControls.maxDistance = 50; // Maximum zoom distance
+			orbitControls.minDistance = 5 * 10; // Minimum zoom distance
+			orbitControls.maxDistance = 50 * 10; // Maximum zoom distance
 			orbitControls.enablePan = true; // Allow panning
 		}
 		// Update water time for wave animation
@@ -195,7 +273,28 @@ function initThreeJS() {
 		) {
 			water.material.uniforms["time"].value += 0.2 / 60.0; // This line is crucial!
 		}
+		// scene.traverse((obj) => {
+		// 	if (
+		// 		obj.isMesh &&
+		// 		obj.geometry &&
+		// 		obj.geometry.type === "TextGeometry"
+		// 	) {
+		// 		obj.lookAt(camera.position);
+		// 	}
+		// });
+		// In your animate function, after scene.traverse for TextGeometry (or replacing it)
+		scene.traverse((obj) => {
+			if (obj.userData && obj.userData.type === "spriteLabel") {
+				// Option 1: Simple lookAt (might cause flipping if camera goes directly above/below)
+				// obj.lookAt(camera.position);
 
+				// Option 2: Copy camera quaternion (more stable for billboarding)
+				// This keeps the billboard upright relative to its own local Y-axis.
+				const camWorldPos = new THREE.Vector3();
+				camera.getWorldPosition(camWorldPos);
+				obj.lookAt(camWorldPos); // Make it look at the camera's world position
+			}
+		});
 		renderer.render(scene, camera);
 	}
 	animate();
@@ -246,7 +345,89 @@ function clearDynamicSceneObjects() {
 		focusCompanyLight = null;
 	}
 }
+function createSpriteLabel(
+	text,
+	companyId,
+	textColor = "white",
+	backgroundColor = "rgba(0,0,0,0.7)"
+) {
+	function abbreviateCompanyName(name) {
+		const abbreviations = [
+			{ regex: /\bCorporation\b/gi, abbr: "Corp." },
+			{ regex: /\bIncorporated\b/gi, abbr: "Inc." },
+			{ regex: /\bLimited\b/gi, abbr: "Ltd." },
+			{ regex: /\bCompany\b/gi, abbr: "Co." },
+			{ regex: /\bInternational\b/gi, abbr: "Int'l" },
+			{ regex: /\bGroup\b/gi, abbr: "Grp." },
+			{ regex: /\bHoldings?\b/gi, abbr: "Hldgs." },
+			{ regex: /\bPartners?\b/gi, abbr: "Ptnrs." },
+			{ regex: /\bAssociates?\b/gi, abbr: "Assoc." },
+			{ regex: /\bIndustries\b/gi, abbr: "Inds." },
+			{ regex: /\bManagement\b/gi, abbr: "Mgmt." },
+			{ regex: /\bServices\b/gi, abbr: "Svcs." },
+			{ regex: /\bTechnologies\b/gi, abbr: "Tech." },
+			{ regex: /\bSystems\b/gi, abbr: "Sys." },
+			{ regex: /\bSolutions\b/gi, abbr: "Sol." },
+			{ regex: /\bResearch\b/gi, abbr: "R&D" },
+			{ regex: /\bDevelopment\b/gi, abbr: "Dev." },
+			{ regex: /\bLogistics\b/gi, abbr: "Log." },
+			{ regex: /\bConsulting\b/gi, abbr: "Consult." },
+			{ regex: /\bFinancial\b/gi, abbr: "Fin." },
+			{ regex: /\bMarketing\b/gi, abbr: "Mktg." },
+			{ regex: /\bSales\b/gi, abbr: "Sls." },
+			{ regex: /\bRetail\b/gi, abbr: "Rtl." },
+			{ regex: /\bWholesale\b/gi, abbr: "Wsl." },
+			{ regex: /\bManufacturing\b/gi, abbr: "Mfg." },
+			{ regex: /\bDistribution\b/gi, abbr: "Dist." },
+			{ regex: /\bConstruction\b/gi, abbr: "Constr." },
+			{ regex: /\bEngineering\b/gi, abbr: "Eng." },
+			{ regex: /\bArchitecture\b/gi, abbr: "Arch." },
+			{ regex: /\bEntertainment\b/gi, abbr: "Entmt." },
+			{ regex: /\bPublishing\b/gi, abbr: "Pub." },
+			{ regex: /\bEducation\b/gi, abbr: "Edu." },
+			{ regex: /\bHealthcare\b/gi, abbr: "Hlth." },
+			{ regex: /\bPharmaceuticals?\b/gi, abbr: "Pharma" },
+		];
+		let result = name;
+		abbreviations.forEach(({ regex, abbr }) => {
+			result = result.replace(regex, abbr);
+		});
+		return result;
+	}
+	text = abbreviateCompanyName(text); // Abbreviate company name if needed
+	const canvas = document.createElement("canvas");
+	// ... (setup canvas and draw text as in createBillboardLabel) ...
+	// For sprite, a good canvas size might be 256x64 or 512x128 depending on aspect
+	canvas.width = (text.length * 36) | 0; // Width of the canvas
+	canvas.height = 64; // Height of the canvas
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.minFilter = THREE.LinearMipMapLinearFilter; // Prevents mipmapping artifacts
+	texture.magFilter = THREE.LinearFilter; // Prevents mipmapping artifacts
+	texture.needsUpdate = true; // Ensure the texture is updated
+	const ctx = canvas.getContext("2d");
+	ctx.fillStyle = backgroundColor; // Background color
+	ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill background
+	ctx.font = "bold 48px Arial"; // Font size and family
+	ctx.fillStyle = textColor; // Text color
+	ctx.textAlign = "center"; // Center text horizontally
+	ctx.textBaseline = "middle"; // Center text vertically
+	ctx.fillText(text, canvas.width / 2, canvas.height / 2); // Draw the text in the center
+	// Create a sprite material with the texture
+	const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+	const sprite = new THREE.Sprite(spriteMaterial);
 
+	// Scale the sprite to an appropriate size in your 3D scene
+	// The scale depends on your desired billboard size relative to buildings
+	var ratio = canvas.width / canvas.height; // Maintain aspect ratio
+	sprite.scale.set(ratio, 1, 1);
+
+	sprite.userData = {
+		companyId: companyId,
+		type: "spriteLabel",
+		companyName: text,
+	};
+	return sprite;
+}
 async function fetchCompanyData(companyId) {
 	try {
 		const response = await fetch(`/api/company/${companyId}/graph`);
@@ -257,17 +438,17 @@ async function fetchCompanyData(companyId) {
 			);
 		}
 		const data = await response.json();
-		dataOutput.textContent = JSON.stringify(data, null, 2);
+		// dataOutput.textContent = JSON.stringify(data, null, 2);
 		console.log("Fetched data:", data);
 		updateSceneWithObjects(data);
 	} catch (error) {
-		dataOutput.textContent = `Error loading data: ${error.message}`;
+		// dataOutput.textContent = `Error loading data: ${error.message}`;
 		console.error("Error loading data:", error);
 		clearDynamicSceneObjects(); // Clear scene on error too
 	}
 }
 
-function createProceduralBuilding(width, height, depth, styleHint) {
+function createProceduralBuilding(width, height, depth, companyDetails) {
 	const buildingGroup = new THREE.Group();
 
 	// Main building body
@@ -293,6 +474,7 @@ function createProceduralBuilding(width, height, depth, styleHint) {
 	});
 	const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
 	bodyMesh.position.y = bodyHeight / 2;
+	bodyMesh.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 	buildingGroup.add(bodyMesh);
 
 	// Roof
@@ -315,6 +497,7 @@ function createProceduralBuilding(width, height, depth, styleHint) {
 	});
 	const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
 	roofMesh.position.y = bodyHeight + roofHeight / 2;
+	roofMesh.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 	buildingGroup.add(roofMesh);
 
 	// --- Windows (Example using a separate mesh with window texture) ---
@@ -345,24 +528,39 @@ function createProceduralBuilding(width, height, depth, styleHint) {
 			windowMaterial
 		);
 		windowPlaneF.position.set(0, bodyHeight / 2, depth / 2 + 0.01); // Front
+		windowPlaneF.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneF);
 
 		// You would create similar planes for other sides (back, left, right)
 		const windowPlaneB = windowPlaneF.clone();
 		windowPlaneB.rotation.y = Math.PI;
 		windowPlaneB.position.set(0, bodyHeight / 2, -depth / 2 - 0.01); // Back
+		windowPlaneB.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneB);
 
 		const windowPlaneL = windowPlaneF.clone();
 		windowPlaneL.rotation.y = -Math.PI / 2;
 		windowPlaneL.position.set(-width / 2 - 0.01, bodyHeight / 2, 0); // Left
+		windowPlaneL.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneL);
 
 		const windowPlaneR = windowPlaneF.clone();
 		windowPlaneR.rotation.y = Math.PI / 2;
 		windowPlaneR.position.set(width / 2 + 0.01, bodyHeight / 2, 0); // Right
+		windowPlaneR.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneR);
 	}
+	// --- Add Billboard Label ---
+	const labelText = companyDetails.company_name || "Unknown Company";
+	const labelSprite = createSpriteLabel(
+		labelText,
+		companyDetails.company_id,
+		"white",
+		"rgba(0,0,0,0.7)"
+	);
+	labelSprite.position.set(0, roofHeight + bodyHeight + 0.5, 0); // Position above the building
+
+	buildingGroup.add(labelSprite);
 
 	// Shadows for the whole group
 	buildingGroup.traverse((child) => {
@@ -381,9 +579,10 @@ function updateSceneWithObjects(data) {
 	const relatedEntries = data.related_companies;
 
 	// --- 1. Central Company ---
-	const focusBuildingHeight = 3.5; // Taller
-	const focusWidth = 2;
-	const focusDepth = 2;
+	var scaleFactor = 5;
+	const focusBuildingHeight = 3.5 * scaleFactor; // Taller
+	const focusWidth = 2 * scaleFactor;
+	const focusDepth = 2 * scaleFactor;
 
 	// const focusBuilding = createProceduralBuilding(focusWidth, focusBuildingHeight, focusDepth, focusCompany.city_metaphor_style);
 	// For the focus company, let's use a simplified unique style for now, or customize createProceduralBuilding further
@@ -411,7 +610,8 @@ function updateSceneWithObjects(data) {
 
 	scene.add(focusBuildingMesh); // Add the group/mesh to the scene
 	objectsInScene.push(focusBuildingMesh);
-
+	// Store company details in the mesh for later reference
+	focusBuildingMesh.userData.companyDetails = focusCompany;
 	if (focusCompanyLight) scene.remove(focusCompanyLight);
 	focusCompanyLight = new THREE.PointLight(0xffffff, 1.2, 25);
 	focusCompanyLight.castShadow = true; // Focus light should also cast shadow
@@ -448,14 +648,14 @@ function updateSceneWithObjects(data) {
 	const angleIncrement =
 		districtTypes.length > 0 ? (2 * Math.PI) / districtTypes.length : 0;
 
-	const MAX_PROXIMITY_DISTANCE = 20;
-	const MIN_PROXIMITY_DISTANCE = 8; // Increased min slightly to give islands space
-	const CLUSTER_SPREAD_RADIUS = 3.0; // Base radius for building cluster, island will be larger
-	const ISLAND_HEIGHT = 0.5; // Thickness of the island pedestal
-	const ISLAND_Y_OFFSET = 0.1; // How much the base of the island is lifted from y=0
+	const MAX_PROXIMITY_DISTANCE = 20 * scaleFactor;
+	const MIN_PROXIMITY_DISTANCE = 8 * scaleFactor; // Increased min slightly to give islands space
+	const CLUSTER_SPREAD_RADIUS = 3.0 * scaleFactor; // Base radius for building cluster, island will be larger
+	const ISLAND_HEIGHT = 0.5 * scaleFactor; // Thickness of the island pedestal
+	const ISLAND_Y_OFFSET = 0.1 * scaleFactor; // How much the base of the island is lifted from y=0
 
 	// Adjust main ground plane to be lower if islands are slightly elevated
-	if (groundPlane) groundPlane.position.y = -0.1;
+	if (groundPlane) groundPlane.position.y = -0.1 * scaleFactor;
 
 	districtTypes.forEach((type, index) => {
 		const districtData = districts[type];
@@ -519,15 +719,15 @@ function updateSceneWithObjects(data) {
 		const BUILDING_BASE_HEIGHT_ON_ISLAND = ISLAND_HEIGHT; // Buildings sit on top of the island
 
 		districtData.companies.forEach((company, compIndex) => {
-			const buildingW = 1.2;
-			const buildingH = 1.8 + Math.random() * 1.2; // Slightly shorter on average due to island height
-			const buildingD = 1.2;
+			const buildingW = 1.2 * scaleFactor;
+			const buildingH = (1.8 + Math.random() * 1.2) * scaleFactor; // Slightly shorter on average due to island height
+			const buildingD = 1.2 * scaleFactor;
 
 			const companyBuilding = createProceduralBuilding(
 				buildingW,
 				buildingH,
 				buildingD,
-				company.city_metaphor_style
+				company
 			);
 
 			const buildingClusterRadius =
@@ -550,6 +750,25 @@ function updateSceneWithObjects(data) {
 			);
 
 			districtGroup.add(companyBuilding);
+
+			// let's add a text label just above the building
+
+			// const textGeometry = new TextGeometry(company.company_name, {
+			// 	font: helvetikerFont, // Use the loaded helvetiker font
+			// 	size: 0.2,
+			// 	height: 0.1,
+			// 	depth: 0.01,
+			// });
+			// const textMaterial = new THREE.MeshStandardMaterial({
+			// 	color: 0xff0000,
+			// });
+			// const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+			// textMesh.position.set(
+			// 	buildingX - buildingW / 2,
+			// 	BUILDING_BASE_HEIGHT_ON_ISLAND + buildingH + 0.1,
+			// 	buildingZ
+			// );
+			// districtGroup.add(textMesh);
 		});
 
 		scene.add(districtGroup);
@@ -563,14 +782,15 @@ function updateSceneWithObjects(data) {
 // (Keep existing event listeners for companyIdInput and loadCompanyButton)
 const companyIdInput = document.getElementById("companyIdInput");
 const loadCompanyButton = document.getElementById("loadCompanyButton");
-const dataOutput = document.getElementById("dataOutput");
+// const dataOutput = document.getElementById("dataOutput");
 
 loadCompanyButton.addEventListener("click", () => {
 	const companyId = parseInt(companyIdInput.value);
 	if (!isNaN(companyId) && companyId > 0) {
 		fetchCompanyData(companyId);
 	} else {
-		dataOutput.textContent = "Please enter a valid company ID (e.g., 1-5).";
+		// dataOutput.textContent = "Please enter a valid company ID (e.g., 1-5).";
+		console.error("Please enter a valid company ID (e.g., 1-5).");
 	}
 });
 

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Entry - Company Relationships</title>
+    <link rel="stylesheet" href="style.css"> </head>
+<body>
+    <header>
+        <h1>Data Management</h1>
+        <nav>
+            <a href="/">View 3D Data</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div id="dataInputForms">
+            <h2>Enter New Data</h2>
+
+            <!-- Add Company Section -->
+            <div id="addCompanySection">
+            <h3>Add New Company</h3>
+            <form id="addCompanyForm">
+                <label for="companyName">Name:</label>
+                <input type="text" id="companyName" name="company_name" required><br><br>
+                <label for="industry">Industry:</label>
+                <input type="text" id="industry" name="industry"><br><br>
+                <label for="website">Website:</label>
+                <input type="url" id="website" name="website"><br><br>
+                <label for="headquartersLocation">Headquarters Location:</label>
+                <input type="text" id="headquartersLocation" name="headquarters_location"><br><br>
+                <label for="companyDescription">Description:</label>
+                <textarea id="companyDescription" name="description"></textarea><br><br>
+                <label for="foundedDate">Founded Date:</label>
+                <input type="date" id="foundedDate" name="founded_date"><br><br>
+                <label for="employeeCount">Employee Count:</label>
+                <input type="number" id="employeeCount" name="employee_count" min="0"><br><br>
+                <label for="isPublic">Is Publicly Traded?</label>
+                <input type="checkbox" id="isPublic" name="is_public"><br><br>
+                <label for="stockTicker">Stock Ticker:</label>
+                <input type="text" id="stockTicker" name="stock_ticker"><br><br>
+                <button type="submit">Add Company</button>
+            <!-- 
+                    <script>
+                    const companyFormFieldTypes = {
+                        companyName: "string",
+                        industry: "string",
+                        website: "url",
+                        headquartersLocation: "string",
+                        companyDescription: "string",
+                        foundedDate: "date",
+                        employeeCount: "number",
+                        isPublic: "boolean",
+                        stockTicker: "string"
+                    };
+                    </script>
+            -->
+            </form>
+            <details style="margin-top:1em;">
+                <summary>Fill form from JSON</summary>
+                <textarea id="companyJsonInput" rows="5" style="width:100%;" placeholder='{"companyName":"Acme","industry":"Tech",...}'></textarea>
+                <button type="button" id="fillCompanyFormBtn">Fill Form</button>
+                <div id="jsonInputError" style="color:red;"></div>
+            </details>
+            <script>
+                document.getElementById('fillCompanyFormBtn').onclick = function() {
+                    const jsonInput = document.getElementById('companyJsonInput').value;
+                    let data;
+                    try {
+                        data = JSON.parse(jsonInput);
+                        document.getElementById('jsonInputError').textContent = '';
+                    } catch (e) {
+                        document.getElementById('jsonInputError').textContent = 'Invalid JSON';
+                        return;
+                    }
+                    for (const [id, value] of Object.entries(data)) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = !!value;
+                            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                                el.value = value;
+                            }
+                        }
+                    }
+                };
+            </script>
+            <div id="addCompanyMessage"></div>
+            </div>
+            <hr>
+
+            <!-- Add Product Section -->
+            <div id="addProductSection">
+            <h3>Add New Product</h3>
+            <form id="addProductForm">
+                <label for="productCompanyName">Company:</label>
+                <select id="productCompanyName" name="company_id" class="company-select" required></select><br><br>
+                <label for="productName">Product Name:</label>
+                <input type="text" id="productName" name="product_name" required><br><br>
+                <label for="productDescription">Description:</label>
+                <textarea id="productDescription" name="description"></textarea><br><br>
+                <label for="productCategory">Category:</label>
+                <input type="text" id="productCategory" name="category"><br><br>
+                <label for="launchDate">Launch Date:</label>
+                <input type="date" id="launchDate" name="launch_date"><br><br>
+                <label for="productUrl">Product URL:</label>
+                <input type="url" id="productUrl" name="product_url"><br><br>
+                <label for="productStatus">Status:</label>
+                <input type="text" id="productStatus" name="status"><br><br>
+                <button type="submit">Add Product</button>
+
+                <!-- <script>
+                    const productFormFieldTypes = {
+                        productCompanyName: "string",
+                        productName: "string",
+                        productDescription: "string",
+                        productCategory: "string",
+                        launchDate: "date",
+                        productUrl: "url",
+                        productStatus: "string"
+                    };
+                </script> -->
+            </form>
+            <details style="margin-top:1em;">
+                <summary>Fill form from JSON</summary>
+                <textarea id="productJsonInput" rows="5" style="width:100%;" placeholder='{"productName":"Widget","productDescription":"A great widget",...}'></textarea>
+                <button type="button" id="fillProductFormBtn">Fill Form</button>
+                <div id="productJsonInputError" style="color:red;"></div>
+            </details>
+            <script>
+                document.getElementById('fillProductFormBtn').onclick = function() {
+                    const jsonInput = document.getElementById('productJsonInput').value;
+                    let data;
+                    try {
+                        data = JSON.parse(jsonInput);
+                        document.getElementById('productJsonInputError').textContent = '';
+                    } catch (e) {
+                        document.getElementById('productJsonInputError').textContent = 'Invalid JSON';
+                        return;
+                    }
+                    for (const [id, value] of Object.entries(data)) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = !!value;
+                            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                                el.value = value;
+                            }
+                        }
+                    }
+                };
+            </script>
+            <div id="addProductMessage"></div>
+            </div>
+            <hr>
+
+            <!-- Add Relationship Section -->
+            <div id="addRelationshipSection">
+            <h3>Add New Relationship</h3>
+            <form id="addRelationshipForm">
+                <label for="company1Id">Company 1:</label>
+                <select id="company1Id" name="company1_id" class="company-select" required></select><br><br>
+                <label for="company2Id">Company 2:</label>
+                <select id="company2Id" name="company2_id" class="company-select" required></select><br><br>
+                <label for="relationshipType">Relationship Type:</label>
+                <select id="relationshipType" name="relationship_type" required>
+                <option value="">-- Select Type --</option>
+                <option value="Partner">Partner</option>
+                <option value="Vendor">Vendor</option>
+                <option value="Customer">Customer</option>
+                <option value="Competitor">Competitor</option>
+                <option value="Investor">Investor</option>
+                </select><br><br>
+                <label for="relationshipStartDate">Start Date:</label>
+                <input type="date" id="relationshipStartDate" name="start_date"><br><br>
+                <label for="relationshipEndDate">End Date:</label>
+                <input type="date" id="relationshipEndDate" name="end_date"><br><br>
+                <label for="relationshipStatus">Status:</label>
+                <input type="text" id="relationshipStatus" name="status"><br><br>
+                <label for="relationshipDescription">Description/Notes:</label>
+                <textarea id="relationshipDescription" name="description"></textarea><br><br>
+                <button type="submit">Add Relationship</button>
+                <!--
+                <script>
+                    const relationshipFormFieldTypes = {
+                        company1Id: "string",
+                        company2Id: "string",
+                        relationshipType: "string",
+                        startDate: "date",
+                        endDate: "date",
+                        status: "string",
+                        description: "string"
+                    };
+                </script>
+                -->
+            </form>
+            <details style="margin-top:1em;">
+                <summary>Fill form from JSON</summary>
+                <textarea id="relationshipJsonInput" rows="5" style="width:100%;" placeholder='{"company1Id":"1","company2Id":"2","relationshipType":"Partner",...}'></textarea>
+                <button type="button" id="fillRelationshipFormBtn">Fill Form</button>
+                <div id="relationshipJsonInputError" style="color:red;"></div>
+            </details>
+            <script>
+                document.getElementById('fillRelationshipFormBtn').onclick = function() {
+                    const jsonInput = document.getElementById('relationshipJsonInput').value;
+                    let data;
+                    try {
+                        data = JSON.parse(jsonInput);
+                        document.getElementById('relationshipJsonInputError').textContent = '';
+                    } catch (e) {
+                        document.getElementById('relationshipJsonInputError').textContent = 'Invalid JSON';
+                        return;
+                    }
+                    for (const [id, value] of Object.entries(data)) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = !!value;
+                            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                                el.value = value;
+                            }
+                        }
+                    }
+                };
+            </script>
+            <div id="addRelationshipMessage"></div>
+            </div>
+            <hr>
+
+            <!-- Add News/Event Section -->
+            <div id="addNewsEventSection">
+            <h3>Add News/Event</h3>
+            <form id="addNewsEventForm">
+                <label for="newsTitle">Title:</label>
+                <input type="text" id="newsTitle" name="title" required><br><br>
+                <label for="newsUrl">URL:</label>
+                <input type="url" id="newsUrl" name="url" required><br><br>
+                <label for="newsSource">Source Name:</label>
+                <input type="text" id="newsSource" name="source_name"><br><br>
+                <label for="newsPublicationDate">Publication Date:</label>
+                <input type="date" id="newsPublicationDate" name="publication_date"><br><br>
+                <label for="newsSummary">Summary:</label>
+                <textarea id="newsSummary" name="summary"></textarea><br><br>
+                <label for="newsSentiment">Sentiment:</label>
+                <select id="newsSentiment" name="sentiment">
+                <option value="">-- Select --</option>
+                <option value="Positive">Positive</option>
+                <option value="Negative">Negative</option>
+                <option value="Neutral">Neutral</option>
+                </select><br><br>
+                <button type="submit">Add News/Event</button>
+
+                <!--
+                <script>
+                    const newsEventFormFieldTypes = {
+                        newsTitle: "string",
+                        newsUrl: "url",
+                        newsSource: "string",
+                        newsPublicationDate: "date",
+                        newsSummary: "string",
+                        newsSentiment: "string"
+                    };
+                </script>
+                -->
+            </form>
+            <details style="margin-top:1em;">
+                <summary>Fill form from JSON</summary>
+                <textarea id="newsEventJsonInput" rows="5" style="width:100%;" placeholder='{"newsTitle":"Big Merger","newsUrl":"https://...","newsSource":"Reuters",...}'></textarea>
+                <button type="button" id="fillNewsEventFormBtn">Fill Form</button>
+                <div id="newsEventJsonInputError" style="color:red;"></div>
+            </details>
+            <script>
+                document.getElementById('fillNewsEventFormBtn').onclick = function() {
+                    const jsonInput = document.getElementById('newsEventJsonInput').value;
+                    let data;
+                    try {
+                        data = JSON.parse(jsonInput);
+                        document.getElementById('newsEventJsonInputError').textContent = '';
+                    } catch (e) {
+                        document.getElementById('newsEventJsonInputError').textContent = 'Invalid JSON';
+                        return;
+                    }
+                    for (const [id, value] of Object.entries(data)) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = !!value;
+                            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                                el.value = value;
+                            }
+                        }
+                    }
+                };
+            </script>
+            <div id="addNewsEventMessage"></div>
+            </div>
+            <hr>
+
+            <!-- Link Company to News/Event Section -->
+            <div id="linkCompanyNewsEventSection">
+            <h3>Link Company to News/Event</h3>
+            <form id="linkCompanyNewsEventForm">
+                <label for="linkCompanyId">Company:</label>
+                <select id="linkCompanyId" name="company_id" class="company-select" required></select><br><br>
+                <label for="linkNewsEventId">News/Event:</label>
+                <select id="linkNewsEventId" name="news_event_id" class="news-event-select" required></select><br><br>
+                <label for="roleInEvent">Role in Event:</label>
+                <input type="text" id="roleInEvent" name="role_in_event" placeholder="e.g., Primary Subject, Mentioned, Investor, Investee"><br><br>
+                <button type="submit">Link Company & News/Event</button>
+
+                <!--
+                <script>
+                    const linkCompanyNewsEventFormFieldTypes = {
+                        linkCompanyId: "string",
+                        linkNewsEventId: "string",
+                        roleInEvent: "string"
+                    };
+                </script>
+                -->
+            </form>
+            <details style="margin-top:1em;">
+                <summary>Fill form from JSON</summary>
+                <textarea id="linkCompanyNewsEventJsonInput" rows="5" style="width:100%;" placeholder='{"linkCompanyId":"1","linkNewsEventId":"2","roleInEvent":"Primary Subject"}'></textarea>
+                <button type="button" id="fillLinkCompanyNewsEventFormBtn">Fill Form</button>
+                <div id="linkCompanyNewsEventJsonInputError" style="color:red;"></div>
+            </details>
+            <script>
+                document.getElementById('fillLinkCompanyNewsEventFormBtn').onclick = function() {
+                    const jsonInput = document.getElementById('linkCompanyNewsEventJsonInput').value;
+                    let data;
+                    try {
+                        data = JSON.parse(jsonInput);
+                        document.getElementById('linkCompanyNewsEventJsonInputError').textContent = '';
+                    } catch (e) {
+                        document.getElementById('linkCompanyNewsEventJsonInputError').textContent = 'Invalid JSON';
+                        return;
+                    }
+                    for (const [id, value] of Object.entries(data)) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = !!value;
+                            } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                                el.value = value;
+                            }
+                        }
+                    }
+                };
+            </script>
+            <div id="linkCompanyNewsEventMessage"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Company Data Management</p>
+    </footer>
+
+    <script src="data-entry-app.js"></script> </body>
+</html>
