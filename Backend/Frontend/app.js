@@ -398,7 +398,7 @@ function createSpriteLabel(
 	const canvas = document.createElement("canvas");
 	// ... (setup canvas and draw text as in createBillboardLabel) ...
 	// For sprite, a good canvas size might be 256x64 or 512x128 depending on aspect
-	canvas.width = (text.length * 36) | 0; // Width of the canvas
+	canvas.width = (text.length * 24) | 0; // Width of the canvas
 	canvas.height = 64; // Height of the canvas
 	const texture = new THREE.CanvasTexture(canvas);
 	texture.minFilter = THREE.LinearMipMapLinearFilter; // Prevents mipmapping artifacts
@@ -407,7 +407,7 @@ function createSpriteLabel(
 	const ctx = canvas.getContext("2d");
 	ctx.fillStyle = backgroundColor; // Background color
 	ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill background
-	ctx.font = "bold 48px Arial"; // Font size and family
+	ctx.font = "bold 40px Arial"; // Font size and family
 	ctx.fillStyle = textColor; // Text color
 	ctx.textAlign = "center"; // Center text horizontally
 	ctx.textBaseline = "middle"; // Center text vertically
