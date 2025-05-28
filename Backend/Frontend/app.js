@@ -447,7 +447,53 @@ async function fetchCompanyData(companyId) {
 		clearDynamicSceneObjects(); // Clear scene on error too
 	}
 }
+// Helper to create a material with the text texture
+function createTexturedMaterialForRoofSide(
+	text,
+	companyId,
+	sideWidth,
+	sideHeight
+) {
+	const canvas = document.createElement("canvas");
+	const context = canvas.getContext("2d");
+	// Make canvas resolution proportional to the 3D dimensions for clarity
+	canvas.width = sideWidth * 100; // e.g., 100 pixels per 3D unit
+	canvas.height = sideHeight * 100;
 
+	// Try to use the rooftopTexture image as the background for the roof side label
+	if (rooftopTexture && rooftopTexture.image) {
+		const img = rooftopTexture.image;
+		// Draw the texture image to fill the canvas
+		context.drawImage(img, 0, 0, canvas.width, canvas.height);
+	} else {
+		// Fallback: solid color if texture not loaded
+		context.fillStyle = "rgba(80, 80, 80, 1)"; // Roof side background color
+		context.fillRect(0, 0, canvas.width, canvas.height);
+	}
+
+	// Add a semi-transparent black overlay to darken the background for better text contrast
+	context.fillStyle = "rgba(0,0,0,0.5)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	const fontSize = Math.min(
+		canvas.height * 0.6,
+		canvas.width / (text.length * 0.55)
+	);
+	context.font = `Bold ${fontSize}px Arial`;
+	context.fillStyle = "white";
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+	context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.needsUpdate = true;
+	// texture.repeat.set(1,1); // May not need repeat if canvas is sized for the face
+
+	return new THREE.MeshStandardMaterial({
+		map: texture,
+		roughness: 0.8,
+		metalness: 0.1,
+	});
+}
 function createProceduralBuilding(width, height, depth, companyDetails) {
 	const buildingGroup = new THREE.Group();
 
@@ -485,17 +531,61 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 		depth * 1.05
 	); // Slightly larger roof
 
-	if (rooftopTexture) {
-		rooftopTexture.repeat.set(width / 4, depth / 4); // Adjust
-	}
-
-	const roofMaterial = new THREE.MeshStandardMaterial({
-		map: rooftopTexture,
+	// if (rooftopTexture) {
+	// 	rooftopTexture.repeat.set(width / 4, depth / 4); // Adjust
+	// }
+	// Materials for the roof
+	const roofTopBottomMaterial = new THREE.MeshStandardMaterial({
+		map: rooftopTexture, // Your existing rooftop texture
 		roughness: 0.9,
 		metalness: 0.05,
 		// color: rooftopTexture ? 0xffffff : 0xaaaaaa
 	});
-	const roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+	var actualRoofWidth = width * 1.05; // Use the same width as roofGeometry
+	var actualRoofDepth = depth * 1.05; // Use the same depth as roofGeometry
+
+	// Create unique text materials for each side (or reuse if text is same/generic)
+	// Roof side dimensions are: (actualRoofDepth x roofHeight) for X-sides, (actualRoofWidth x roofHeight) for Z-sides.
+	const textMaterialSide_PX = createTexturedMaterialForRoofSide(
+		companyDetails.company_name,
+		companyDetails.company_id,
+		actualRoofDepth,
+		roofHeight
+	); // Side facing +X
+	const textMaterialSide_NX = createTexturedMaterialForRoofSide(
+		companyDetails.company_name,
+		companyDetails.company_id,
+		actualRoofDepth,
+		roofHeight
+	); // Side facing -X
+	const textMaterialSide_PZ = createTexturedMaterialForRoofSide(
+		companyDetails.company_name,
+		companyDetails.company_id,
+		actualRoofWidth,
+		roofHeight
+	); // Side facing +Z
+	const textMaterialSide_NZ = createTexturedMaterialForRoofSide(
+		companyDetails.company_name,
+		companyDetails.company_id,
+		actualRoofWidth,
+		roofHeight
+	); // Side facing -Z
+
+	const roofMaterials = [
+		textMaterialSide_PX, // Right side (+X)
+		textMaterialSide_NX, // Left side (-X)
+		roofTopBottomMaterial, // Top side (+Y)
+		roofTopBottomMaterial, // Bottom side (-Y) - often not seen, can be simpler
+		textMaterialSide_PZ, // Front side (+Z)
+		textMaterialSide_NZ, // Back side (-Z)
+	];
+	const roofMaterial = new THREE.MeshStandardMaterial({
+		map: rooftopTexture, // Use rooftop texture for top and bottom
+		roughness: 0.9,
+		metalness: 0.05,
+		// color: rooftopTexture ? 0xffffff : 0xaaaaaa
+	});
+	const roofMesh = new THREE.Mesh(roofGeometry, roofMaterials);
 	roofMesh.position.y = bodyHeight + roofHeight / 2;
 	roofMesh.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 	buildingGroup.add(roofMesh);
@@ -556,7 +646,7 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 		labelText,
 		companyDetails.company_id,
 		"white",
-		"rgba(0,0,0,0.7)"
+		"rgba(0,0,0,255)"
 	);
 	labelSprite.position.set(0, roofHeight + bodyHeight + 0.5, 0); // Position above the building
 
