@@ -96,6 +96,16 @@ function loadBuildingTextures() {
 	}
 	console.log("Textures loading...");
 }
+function lerpAngle(currentAngle, targetAngle, alpha) {
+	let delta = (targetAngle - currentAngle) % (2 * Math.PI);
+	if (delta > Math.PI) {
+		delta -= 2 * Math.PI;
+	}
+	if (delta < -Math.PI) {
+		delta += 2 * Math.PI;
+	}
+	return currentAngle + delta * alpha;
+}
 var orbitControls; // Declare globally to avoid re-creating on each frame
 function initThreeJS() {
 	const container = document.getElementById("sceneContainer");
@@ -250,10 +260,12 @@ function initThreeJS() {
 	groundPlane.position.y = -0.1;
 	groundPlane.receiveShadow = true; // Ground must receive shadows
 	scene.add(groundPlane);
-
+	var lastTime = Date.now();
 	function animate() {
 		requestAnimationFrame(animate);
-
+		var now = Date.now();
+		var delta = (now - lastTime) / 1000; // Convert to seconds
+		lastTime = now;
 		// Add user interactive controls (OrbitControls)
 		if (!orbitControls) {
 			orbitControls = new OrbitControls(camera, renderer.domElement);
@@ -274,27 +286,153 @@ function initThreeJS() {
 			water.material.uniforms["time"].value += 0.2 / 60.0; // This line is crucial!
 		}
 		// scene.traverse((obj) => {
-		// 	if (
-		// 		obj.isMesh &&
-		// 		obj.geometry &&
-		// 		obj.geometry.type === "TextGeometry"
-		// 	) {
-		// 		obj.lookAt(camera.position);
+		// 	if (obj.userData && obj.userData.type === "spriteLabel") {
+		// 		// Option 1: Simple lookAt (might cause flipping if camera goes directly above/below)
+		// 		// obj.lookAt(camera.position);
+
+		// 		// Option 2: Copy camera quaternion (more stable for billboarding)
+		// 		// This keeps the billboard upright relative to its own local Y-axis.
+		// 		const camWorldPos = new THREE.Vector3();
+		// 		camera.getWorldPosition(camWorldPos);
+		// 		obj.lookAt(camWorldPos); // Make it look at the camera's world position
 		// 	}
 		// });
-		// In your animate function, after scene.traverse for TextGeometry (or replacing it)
-		scene.traverse((obj) => {
-			if (obj.userData && obj.userData.type === "spriteLabel") {
-				// Option 1: Simple lookAt (might cause flipping if camera goes directly above/below)
-				// obj.lookAt(camera.position);
 
-				// Option 2: Copy camera quaternion (more stable for billboarding)
-				// This keeps the billboard upright relative to its own local Y-axis.
-				const camWorldPos = new THREE.Vector3();
-				camera.getWorldPosition(camWorldPos);
-				obj.lookAt(camWorldPos); // Make it look at the camera's world position
+		const cameraWorldPosition = new THREE.Vector3();
+		camera.getWorldPosition(cameraWorldPosition);
+		const scaleFactor = 5; // Scale factor for the scene, adjust as needed
+		scene.traverse((object) => {
+			// 'object' here is the billboardPivot
+			if (object.userData.isSmartBillboardV2 && object.parent) {
+				const billboardPivot = object;
+				const buildingGroup = billboardPivot.parent; // This is the companyBuilding group
+
+				const buildingHalfWidth =
+					billboardPivot.userData.buildingHalfWidth;
+				const buildingHalfDepth =
+					billboardPivot.userData.buildingHalfDepth;
+				// billboardPivot.position.y is already set to the roof height correctly in addSmartBillboardV2
+				const pivotYOnRoof = billboardPivot.position.y;
+
+				// 1. Get camera's position in the local coordinate system of the BUILDING.
+				const buildingWorldMatrixInverse = new THREE.Matrix4()
+					.copy(buildingGroup.matrixWorld)
+					.invert();
+				const cameraPositionLocalToBuilding = cameraWorldPosition
+					.clone()
+					.applyMatrix4(buildingWorldMatrixInverse);
+
+				const camDirX = cameraPositionLocalToBuilding.x;
+				const camDirZ = cameraPositionLocalToBuilding.z;
+
+				let targetPosition = new THREE.Vector3();
+				let targetPivotYRotation = 0;
+
+				// 2. Determine which predefined state to snap to
+				if (Math.abs(camDirX) > Math.abs(camDirZ)) {
+					// Camera is primarily to the left or right of the building
+					if (camDirX > 0) {
+						// Camera on building's +X side (local right, e.g., East)
+						targetPosition.set(buildingHalfWidth, pivotYOnRoof, 0);
+						targetPivotYRotation = Math.PI / 2; // Pivot's local +Z (billboard front) points along building's +X
+					} else {
+						// Camera on building's -X side (local left, e.g., West)
+						targetPosition.set(-buildingHalfWidth, pivotYOnRoof, 0);
+						targetPivotYRotation = -Math.PI / 2; // Pivot's local +Z points along building's -X
+					}
+				} else {
+					// Camera is primarily to the front or back of the building
+					if (camDirZ > 0) {
+						// Camera on building's +Z side (local front, e.g., North)
+						targetPosition.set(0, pivotYOnRoof, buildingHalfDepth);
+						targetPivotYRotation = 0; // Pivot's local +Z points along building's +Z
+					} else {
+						// Camera on building's -Z side (local back, e.g., South)
+						targetPosition.set(0, pivotYOnRoof, -buildingHalfDepth);
+						targetPivotYRotation = Math.PI; // Pivot's local +Z points along building's -Z
+					}
+				}
+
+				// 3. Smoothly interpolate pivot's position and rotation to the target state
+				billboardPivot.position.lerp(targetPosition, 10 * delta); // Adjust 10*delta for desired snap speed
+				billboardPivot.rotation.y = lerpAngle(
+					billboardPivot.rotation.y,
+					targetPivotYRotation,
+					10 * delta
+				); // Use corrected lerpAngle
+
+				// For this step, keep the billboardMesh itself (the visual plane) upright without hinging or other local rotations.
+				const billboardMesh = billboardPivot.userData.billboardMesh;
+				// --- 4. Implement Hinge/Lean for the billboardMesh (local X-axis rotation) ---
+				if (billboardMesh) {
+					const pivotWorldPosition = new THREE.Vector3();
+					billboardPivot.getWorldPosition(pivotWorldPosition); // World position of the hinge on the roof
+
+					let targetLeanX = 0; // Default: billboard stands upright (0 rad for X rotation relative to pivot)
+
+					// How far above the hinge the camera needs to be to start full lean (already scaled)
+					const cameraElevationForMaxLean =
+						billboardPivot.userData.billboardHeight * 3; // e.g., 3x billboard height
+					const yDiffCameraToHinge =
+						cameraWorldPosition.y - pivotWorldPosition.y;
+
+					// Consider XZ distance to the pivot as well, to make leaning more pronounced when "looking down"
+					const xzCam = new THREE.Vector2(
+						cameraWorldPosition.x,
+						cameraWorldPosition.z
+					);
+					const xzPivot = new THREE.Vector2(
+						pivotWorldPosition.x,
+						pivotWorldPosition.z
+					);
+					const xzDistanceToPivot = xzCam.distanceTo(xzPivot);
+
+					// Define a threshold for XZ distance where leaning is maximal when above
+					const leanFocusXZRadius =
+						buildingHalfWidth + buildingHalfDepth; // A rough radius around building
+
+					if (yDiffCameraToHinge > 0.2 * scaleFactor) {
+						// Camera is somewhat above the hinge
+						// Calculate lean factor (0 to 1)
+						// It leans more if camera is high AND relatively close in XZ plane
+						let leanFactor = Math.min(
+							1,
+							yDiffCameraToHinge / cameraElevationForMaxLean
+						);
+						if (xzDistanceToPivot > leanFocusXZRadius) {
+							// If camera is far away in XZ, reduce lean even if high
+							leanFactor *= Math.max(
+								0,
+								1 -
+									(xzDistanceToPivot - leanFocusXZRadius) /
+										(leanFocusXZRadius * 2)
+							);
+						}
+
+						// Max lean angle (e.g., 75 degrees back from vertical)
+						const maxLeanAngle = Math.PI * 0.42; // Approx 75 degrees
+						targetLeanX = -leanFactor * maxLeanAngle;
+					} else {
+						// Camera is at side or below hinge, stand billboard more upright
+						// A very slight forward tilt can look nice for side views.
+						targetLeanX = -0.05; // Radians (approx -3 degrees)
+					}
+
+					// Smoothly interpolate billboard MESH's X rotation (the hinge)
+					// Ensure billboardMesh.rotation.y and .z are 0 if pivot handles all Y rotation
+					billboardMesh.rotation.y = 0;
+					billboardMesh.rotation.z = 0;
+					billboardMesh.rotation.x = lerpAngle(
+						billboardMesh.rotation.x,
+						targetLeanX,
+						10 * delta
+					);
+				}
 			}
+
+			// ... (your existing spriteLabel traversal if any) ...
 		});
+
 		renderer.render(scene, camera);
 	}
 	animate();
@@ -640,17 +778,17 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 		windowPlaneR.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneR);
 	}
-	// --- Add Billboard Label ---
-	const labelText = companyDetails.company_name || "Unknown Company";
-	const labelSprite = createSpriteLabel(
-		labelText,
-		companyDetails.company_id,
-		"white",
-		"rgba(0,0,0,255)"
-	);
-	labelSprite.position.set(0, roofHeight + bodyHeight + 0.5, 0); // Position above the building
+	// // --- Add Billboard Label ---
+	// const labelText = companyDetails.company_name || "Unknown Company";
+	// const labelSprite = createSpriteLabel(
+	// 	labelText,
+	// 	companyDetails.company_id,
+	// 	"white",
+	// 	"rgba(0,0,0,255)"
+	// );
+	// labelSprite.position.set(0, roofHeight + bodyHeight + 0.5, 0); // Position above the building
 
-	buildingGroup.add(labelSprite);
+	// buildingGroup.add(labelSprite);
 
 	// Shadows for the whole group
 	buildingGroup.traverse((child) => {
@@ -841,24 +979,14 @@ function updateSceneWithObjects(data) {
 
 			districtGroup.add(companyBuilding);
 
-			// let's add a text label just above the building
-
-			// const textGeometry = new TextGeometry(company.company_name, {
-			// 	font: helvetikerFont, // Use the loaded helvetiker font
-			// 	size: 0.2,
-			// 	height: 0.1,
-			// 	depth: 0.01,
-			// });
-			// const textMaterial = new THREE.MeshStandardMaterial({
-			// 	color: 0xff0000,
-			// });
-			// const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-			// textMesh.position.set(
-			// 	buildingX - buildingW / 2,
-			// 	BUILDING_BASE_HEIGHT_ON_ISLAND + buildingH + 0.1,
-			// 	buildingZ
-			// );
-			// districtGroup.add(textMesh);
+			// Add a smart billboard on top of the building
+			addSmartBillboardV2(
+				companyBuilding,
+				company,
+				buildingW,
+				buildingH,
+				scaleFactor
+			);
 		});
 
 		scene.add(districtGroup);
@@ -867,7 +995,85 @@ function updateSceneWithObjects(data) {
 
 	console.log("Scene updated with organic cluster layout.");
 }
+// Add this function to your Backend/Frontend/app.js
 
+// Assuming you have a createBillboardLabel function like this:
+// function createBillboardLabel(text, companyId, billboardWidth, billboardHeight, textColor, backgroundColor) { ... returns a THREE.Mesh ... }
+// If not, here's a basic version for context:
+function createVisualBillboardMesh(
+	text,
+	billboardWidth,
+	billboardHeight,
+	textColor = "white",
+	backgroundColor = "rgba(50,50,70,0.8)"
+) {
+	const canvas = document.createElement("canvas");
+	const context = canvas.getContext("2d");
+	const canvasWidth = billboardWidth * 100; // Resolution for clarity
+	const canvasHeight = billboardHeight * 100;
+	canvas.width = canvasWidth;
+	canvas.height = canvasHeight;
+
+	context.fillStyle = backgroundColor;
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	const fontSize = Math.min(
+		canvasHeight * 0.6,
+		canvasWidth / (text.length * 0.6)
+	); // Dynamic font size
+	context.font = `Bold ${fontSize}px Arial, sans-serif`;
+	context.fillStyle = textColor;
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+	context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+	const texture = new THREE.CanvasTexture(canvas);
+	const material = new THREE.MeshBasicMaterial({
+		map: texture,
+		transparent: true,
+		side: THREE.DoubleSide,
+	});
+	const geometry = new THREE.PlaneGeometry(billboardWidth, billboardHeight);
+	return new THREE.Mesh(geometry, material);
+}
+
+function addSmartBillboardV2(
+	companyBuildingGroup,
+	companyDetails,
+	buildingW,
+	buildingTotalHeight,
+	scaleFactor
+) {
+	const billboardWidth = buildingW * 0.7; // Example: 70% of building width
+	const billboardHeight = billboardWidth / 4; // Example: 4:1 aspect ratio
+
+	const billboardMesh = createVisualBillboardMesh(
+		companyDetails.company_name,
+		billboardWidth,
+		billboardHeight
+	);
+	billboardMesh.position.y = billboardHeight / 2; // So its bottom edge is at the pivot's origin
+
+	const billboardPivot = new THREE.Object3D();
+	billboardPivot.name = "BillboardPivot_" + companyDetails.company_name;
+	billboardPivot.add(billboardMesh);
+
+	// Initial Y position of the pivot is on the roof top. X and Z will be set dynamically.
+	billboardPivot.position.y = buildingTotalHeight;
+
+	billboardPivot.userData = {
+		isSmartBillboardV2: true,
+		billboardMesh: billboardMesh,
+		// Store building's half-dimensions (already scaled) for edge calculations
+		// These are dimensions of the building itself, pivot will be placed on its edges.
+		buildingHalfWidth: buildingW / 2,
+		buildingHalfDepth: buildingW / 2,
+		billboardHeight: billboardHeight, // Store height for leaning logic
+	};
+
+	companyBuildingGroup.add(billboardPivot);
+	return billboardPivot; // Return the pivot for further manipulation if needed
+}
 // --- Event Listeners ---
 // (Keep existing event listeners for companyIdInput and loadCompanyButton)
 const companyIdInput = document.getElementById("companyIdInput");
