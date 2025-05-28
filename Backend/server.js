@@ -25,6 +25,10 @@ app.use(express.static(path.join(__dirname, "Frontend")));
 //server threejs as 'three'
 app.use(
 	"/three",
+	(req, res, next) => {
+		console.log(`Serving /three static file: ${req.url}`);
+		next();
+	},
 	express.static(path.join(__dirname, "../node_modules/three/"))
 );
 // Backend/server.js (continued)

@@ -364,70 +364,70 @@ function initThreeJS() {
 				// For this step, keep the billboardMesh itself (the visual plane) upright without hinging or other local rotations.
 				const billboardMesh = billboardPivot.userData.billboardMesh;
 				// --- 4. Implement Hinge/Lean for the billboardMesh (local X-axis rotation) ---
-				if (billboardMesh) {
-					const pivotWorldPosition = new THREE.Vector3();
-					billboardPivot.getWorldPosition(pivotWorldPosition); // World position of the hinge on the roof
+				// if (billboardMesh) {
+				// 	const pivotWorldPosition = new THREE.Vector3();
+				// 	billboardPivot.getWorldPosition(pivotWorldPosition); // World position of the hinge on the roof
 
-					let targetLeanX = 0; // Default: billboard stands upright (0 rad for X rotation relative to pivot)
+				// 	let targetLeanX = 0; // Default: billboard stands upright (0 rad for X rotation relative to pivot)
 
-					// How far above the hinge the camera needs to be to start full lean (already scaled)
-					const cameraElevationForMaxLean =
-						billboardPivot.userData.billboardHeight * 3; // e.g., 3x billboard height
-					const yDiffCameraToHinge =
-						cameraWorldPosition.y - pivotWorldPosition.y;
+				// 	// How far above the hinge the camera needs to be to start full lean (already scaled)
+				// 	const cameraElevationForMaxLean =
+				// 		billboardPivot.userData.billboardHeight * 3; // e.g., 3x billboard height
+				// 	const yDiffCameraToHinge =
+				// 		cameraWorldPosition.y - pivotWorldPosition.y;
 
-					// Consider XZ distance to the pivot as well, to make leaning more pronounced when "looking down"
-					const xzCam = new THREE.Vector2(
-						cameraWorldPosition.x,
-						cameraWorldPosition.z
-					);
-					const xzPivot = new THREE.Vector2(
-						pivotWorldPosition.x,
-						pivotWorldPosition.z
-					);
-					const xzDistanceToPivot = xzCam.distanceTo(xzPivot);
+				// 	// Consider XZ distance to the pivot as well, to make leaning more pronounced when "looking down"
+				// 	const xzCam = new THREE.Vector2(
+				// 		cameraWorldPosition.x,
+				// 		cameraWorldPosition.z
+				// 	);
+				// 	const xzPivot = new THREE.Vector2(
+				// 		pivotWorldPosition.x,
+				// 		pivotWorldPosition.z
+				// 	);
+				// 	const xzDistanceToPivot = xzCam.distanceTo(xzPivot);
 
-					// Define a threshold for XZ distance where leaning is maximal when above
-					const leanFocusXZRadius =
-						buildingHalfWidth + buildingHalfDepth; // A rough radius around building
+				// 	// Define a threshold for XZ distance where leaning is maximal when above
+				// 	const leanFocusXZRadius =
+				// 		buildingHalfWidth + buildingHalfDepth; // A rough radius around building
 
-					if (yDiffCameraToHinge > 0.2 * scaleFactor) {
-						// Camera is somewhat above the hinge
-						// Calculate lean factor (0 to 1)
-						// It leans more if camera is high AND relatively close in XZ plane
-						let leanFactor = Math.min(
-							1,
-							yDiffCameraToHinge / cameraElevationForMaxLean
-						);
-						if (xzDistanceToPivot > leanFocusXZRadius) {
-							// If camera is far away in XZ, reduce lean even if high
-							leanFactor *= Math.max(
-								0,
-								1 -
-									(xzDistanceToPivot - leanFocusXZRadius) /
-										(leanFocusXZRadius * 2)
-							);
-						}
+				// 	if (yDiffCameraToHinge > 0.2 * scaleFactor) {
+				// 		// Camera is somewhat above the hinge
+				// 		// Calculate lean factor (0 to 1)
+				// 		// It leans more if camera is high AND relatively close in XZ plane
+				// 		let leanFactor = Math.min(
+				// 			1,
+				// 			yDiffCameraToHinge / cameraElevationForMaxLean
+				// 		);
+				// 		if (xzDistanceToPivot > leanFocusXZRadius) {
+				// 			// If camera is far away in XZ, reduce lean even if high
+				// 			leanFactor *= Math.max(
+				// 				0,
+				// 				1 -
+				// 					(xzDistanceToPivot - leanFocusXZRadius) /
+				// 						(leanFocusXZRadius * 2)
+				// 			);
+				// 		}
 
-						// Max lean angle (e.g., 75 degrees back from vertical)
-						const maxLeanAngle = Math.PI * 0.42; // Approx 75 degrees
-						targetLeanX = -leanFactor * maxLeanAngle;
-					} else {
-						// Camera is at side or below hinge, stand billboard more upright
-						// A very slight forward tilt can look nice for side views.
-						targetLeanX = -0.05; // Radians (approx -3 degrees)
-					}
+				// 		// Max lean angle (e.g., 75 degrees back from vertical)
+				// 		const maxLeanAngle = Math.PI * 0.42; // Approx 75 degrees
+				// 		targetLeanX = -leanFactor * maxLeanAngle;
+				// 	} else {
+				// 		// Camera is at side or below hinge, stand billboard more upright
+				// 		// A very slight forward tilt can look nice for side views.
+				// 		targetLeanX = -0.05; // Radians (approx -3 degrees)
+				// 	}
 
-					// Smoothly interpolate billboard MESH's X rotation (the hinge)
-					// Ensure billboardMesh.rotation.y and .z are 0 if pivot handles all Y rotation
-					billboardMesh.rotation.y = 0;
-					billboardMesh.rotation.z = 0;
-					billboardMesh.rotation.x = lerpAngle(
-						billboardMesh.rotation.x,
-						targetLeanX,
-						10 * delta
-					);
-				}
+				// 	// Smoothly interpolate billboard MESH's X rotation (the hinge)
+				// 	// Ensure billboardMesh.rotation.y and .z are 0 if pivot handles all Y rotation
+				// 	billboardMesh.rotation.y = 0;
+				// 	billboardMesh.rotation.z = 0;
+				// 	billboardMesh.rotation.x = lerpAngle(
+				// 		billboardMesh.rotation.x,
+				// 		targetLeanX,
+				// 		10 * delta
+				// 	);
+				// }
 			}
 
 			// ... (your existing spriteLabel traversal if any) ...
