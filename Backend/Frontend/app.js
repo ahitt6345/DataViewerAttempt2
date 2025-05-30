@@ -756,12 +756,35 @@ function updateSceneWithObjects(data) {
 		metalness: 0.5,
 		// envMap: environmentMap, // We'll add this later for reflections
 	});
+	// --- Add Island Under Focus Building ---
+	const islandVisualRadius = focusWidth * 2; // Make island wider than building
+
+	// Use a box for the island (you can switch to CylinderGeometry for round island)
+	const islandGeometry = new THREE.BoxGeometry(islandVisualRadius, 0.5 * scaleFactor, islandVisualRadius);
+	const islandMaterial = new THREE.MeshStandardMaterial({
+		map: islandSurfaceTexture,
+		color: islandSurfaceTexture ? 0xffffff : 0x228b22,
+		roughness: 0.9,
+		metalness: 0.1,
+	});
+	if (islandSurfaceTexture) {
+		islandSurfaceTexture.repeat.set(islandVisualRadius / 3, islandVisualRadius / 3);
+	}
+	const islandMesh = new THREE.Mesh(islandGeometry, islandMaterial);
+	islandMesh.receiveShadow = true;
+	islandMesh.castShadow = true;
+	// Position so top of island is at y=0 (building base)
+	islandMesh.position.set(0, 0.1 * scaleFactor + (0.5 * scaleFactor) / 2, 0);
+
+	scene.add(islandMesh);
+	objectsInScene.push(islandMesh);
+
 	const focusBuildingMesh = new THREE.Mesh(focusGeo, focusMat);
 	focusBuildingMesh.castShadow = true;
 	focusBuildingMesh.receiveShadow = true;
-	focusBuildingMesh.position.set(0, 0, 0); // Group handles y-offset internally now if using createProceduralBuilding
-	// If using simple mesh:
-	focusBuildingMesh.position.set(0, focusBuildingHeight / 2, 0);
+	// Place building on top of the island
+
+	focusBuildingMesh.position.set(0, 0.1 * scaleFactor + 0.5 * scaleFactor + focusBuildingHeight / 2, 0);
 
 	scene.add(focusBuildingMesh); // Add the group/mesh to the scene
 	objectsInScene.push(focusBuildingMesh);
@@ -798,7 +821,7 @@ function updateSceneWithObjects(data) {
 	const districtTypes = Object.keys(districts);
 	const angleIncrement = districtTypes.length > 0 ? (2 * Math.PI) / districtTypes.length : 0;
 
-	const MAX_PROXIMITY_DISTANCE = 20 * scaleFactor;
+	const MAX_PROXIMITY_DISTANCE = 40 * scaleFactor;
 	const MIN_PROXIMITY_DISTANCE = 8 * scaleFactor; // Increased min slightly to give islands space
 	const CLUSTER_SPREAD_RADIUS = 10.0 * scaleFactor; // Base radius for building cluster, island will be larger
 	const ISLAND_HEIGHT = 0.5 * scaleFactor; // Thickness of the island pedestal
@@ -828,7 +851,8 @@ function updateSceneWithObjects(data) {
 
 		// --- Create the Island/Pedestal ---
 		const islandVisualRadius = CLUSTER_SPREAD_RADIUS + 1.0; // Island slightly larger than building cluster
-		const islandGeometry = new THREE.CylinderGeometry(islandVisualRadius, islandVisualRadius, ISLAND_HEIGHT, 32);
+		//const islandGeometry = new THREE.CylinderGeometry(islandVisualRadius, islandVisualRadius, ISLAND_HEIGHT, 32);
+		const islandGeometry = new THREE.BoxGeometry(islandVisualRadius * 2, ISLAND_HEIGHT, islandVisualRadius * 2); // Cylinder for a more natural island shape
 		// Optional: Box island
 		// const islandGeometry = new THREE.BoxGeometry(islandVisualRadius * 2, ISLAND_HEIGHT, islandVisualRadius * 2);
 
