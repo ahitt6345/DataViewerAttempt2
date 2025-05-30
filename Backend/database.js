@@ -52,28 +52,35 @@ async function initDb() {
 			// Companies Table
 			db.run(
 				`
-                CREATE TABLE IF NOT EXISTS Companies (
-                    company_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    company_name TEXT NOT NULL UNIQUE,
-                    industry TEXT,
-                    website TEXT,
-                    headquarters_location TEXT,
-                    description TEXT,
-                    founded_date DATE,
-                    employee_count INTEGER,
-                    is_public BOOLEAN,
-                    stock_ticker TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `,
+    CREATE TABLE IF NOT EXISTS Companies (
+        company_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_name TEXT NOT NULL UNIQUE,
+        industry TEXT,
+        website TEXT,
+        headquarters_location TEXT, 
+        description TEXT,
+        founded_date DATE,         
+        employee_count INTEGER,    
+        is_public BOOLEAN,         
+        stock_ticker TEXT,         
+        business_model TEXT,       
+        sub_industry TEXT,         
+        markets TEXT,              
+        mosaic_overall INTEGER,    
+        commercial_maturity TEXT,  
+        country TEXT,              
+        total_funding_m REAL,      
+        latest_funding_amount_m REAL, 
+        latest_funding_round TEXT, 
+        latest_funding_date DATE,  
+        company_status_csv TEXT,
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    `,
 				(err) => {
-					if (err)
-						console.error(
-							"Error creating Companies table:",
-							err.message
-						);
-					// Log error but don't reject immediately
+					if (err) console.error("Error creating Companies table:", err.message);
 					else console.log("Companies table checked/created.");
 				}
 			);
@@ -96,11 +103,7 @@ async function initDb() {
                 )
             `,
 				(err) => {
-					if (err)
-						console.error(
-							"Error creating Products table:",
-							err.message
-						);
+					if (err) console.error("Error creating Products table:", err.message);
 					else console.log("Products table checked/created.");
 				}
 			);
@@ -126,11 +129,7 @@ async function initDb() {
                 )
             `,
 				(err) => {
-					if (err)
-						console.error(
-							"Error creating Relationships table:",
-							err.message
-						);
+					if (err) console.error("Error creating Relationships table:", err.message);
 					else console.log("Relationships table checked/created.");
 				}
 			);
@@ -151,11 +150,7 @@ async function initDb() {
                 )
             `,
 				(err) => {
-					if (err)
-						console.error(
-							"Error creating News_Events table:",
-							err.message
-						);
+					if (err) console.error("Error creating News_Events table:", err.message);
 					else console.log("News_Events table checked/created.");
 				}
 			);
@@ -176,23 +171,13 @@ async function initDb() {
             `,
 				(err) => {
 					if (err) {
-						console.error(
-							"Error creating Company_News_Events_Link table:",
-							err.message
-						);
+						console.error("Error creating Company_News_Events_Link table:", err.message);
 						return reject(err); // This is the last table creation, can reject on error
 					}
-					console.log(
-						"Company_News_Events_Link table checked/created."
-					);
+					console.log("Company_News_Events_Link table checked/created.");
 
 					// Triggers for updated_at
-					const tablesWithUpdatedAt = [
-						"Companies",
-						"Products",
-						"Relationships",
-						"News_Events",
-					];
+					const tablesWithUpdatedAt = ["Companies", "Products", "Relationships", "News_Events"];
 					let triggerPromises = tablesWithUpdatedAt.map((table) => {
 						return new Promise((resolveTrigger, rejectTrigger) => {
 							db.run(
@@ -215,9 +200,7 @@ async function initDb() {
 										// Don't necessarily reject the whole initDb for a trigger error
 										// but log it.
 									} else {
-										console.log(
-											`updated_at trigger for ${table} checked/created.`
-										);
+										console.log(`updated_at trigger for ${table} checked/created.`);
 									}
 									resolveTrigger(); // Resolve whether trigger succeeded or failed to not block initDb
 								}
@@ -242,12 +225,7 @@ async function initDb() {
  */
 function getAll(sql, params = []) {
 	return new Promise((resolve, reject) => {
-		if (!db)
-			return reject(
-				new Error(
-					"Database not initialized. Call connectDb() or initDb() first."
-				)
-			);
+		if (!db) return reject(new Error("Database not initialized. Call connectDb() or initDb() first."));
 		db.all(sql, params, (err, rows) => {
 			if (err) {
 				reject(err);
@@ -266,12 +244,7 @@ function getAll(sql, params = []) {
  */
 function getOne(sql, params = []) {
 	return new Promise((resolve, reject) => {
-		if (!db)
-			return reject(
-				new Error(
-					"Database not initialized. Call connectDb() or initDb() first."
-				)
-			);
+		if (!db) return reject(new Error("Database not initialized. Call connectDb() or initDb() first."));
 		db.get(sql, params, (err, row) => {
 			if (err) {
 				reject(err);
@@ -290,9 +263,7 @@ async function getCompanyById(companyId) {
 	return getOne("SELECT * FROM Companies WHERE company_id = ?", [companyId]);
 }
 async function getCompanyByName(companyName) {
-	return getOne("SELECT * FROM Companies WHERE company_name = ?", [
-		companyName,
-	]);
+	return getOne("SELECT * FROM Companies WHERE company_name = ?", [companyName]);
 }
 
 // --- Product Getters ---
@@ -440,15 +411,12 @@ async function getRelatedCompaniesByType(companyId, relationshipType) {
 }
 
 async function getRelationshipById(relationshipId) {
-	return getOne("SELECT * FROM Relationships WHERE relationship_id = ?", [
-		relationshipId,
-	]);
+	return getOne("SELECT * FROM Relationships WHERE relationship_id = ?", [relationshipId]);
 }
 
 // --- News/Events Getters ---
 async function getAllNewsEvents(limit = null, offset = 0) {
-	let sql =
-		"SELECT * FROM News_Events ORDER BY publication_date DESC, news_event_id DESC";
+	let sql = "SELECT * FROM News_Events ORDER BY publication_date DESC, news_event_id DESC";
 	const params = [];
 	if (limit !== null) {
 		sql += " LIMIT ?";
@@ -459,9 +427,7 @@ async function getAllNewsEvents(limit = null, offset = 0) {
 	return getAll(sql, params);
 }
 async function getNewsEventById(newsEventId) {
-	return getOne("SELECT * FROM News_Events WHERE news_event_id = ?", [
-		newsEventId,
-	]);
+	return getOne("SELECT * FROM News_Events WHERE news_event_id = ?", [newsEventId]);
 }
 
 // --- Company - News/Events Link Getters ---
@@ -494,10 +460,7 @@ function closeDb() {
 		if (db && db.open) {
 			db.close((err) => {
 				if (err) {
-					console.error(
-						"Error closing the database connection.",
-						err
-					);
+					console.error("Error closing the database connection.", err);
 					reject(err);
 				} else {
 					console.log("Database connection closed.");
@@ -529,6 +492,24 @@ function closeDb() {
  * @param {string} [companyData.stock_ticker]
  * @returns {Promise<{lastID: number, changes: number}>}
  */
+/**
+ * Adds a new company to the database.
+ * @param {object} companyData Object containing company details.
+ * @param {string} companyData.company_name
+ * // ... (other existing params) ...
+ * @param {string} [companyData.business_model]
+ * @param {string} [companyData.sub_industry]
+ * @param {string} [companyData.markets] // Could be JSON string
+ * @param {number} [companyData.mosaic_overall]
+ * @param {string} [companyData.commercial_maturity]
+ * @param {string} [companyData.country]
+ * @param {number} [companyData.total_funding_m]
+ * @param {number} [companyData.latest_funding_amount_m]
+ * @param {string} [companyData.latest_funding_round]
+ * @param {string} [companyData.latest_funding_date] // YYYY-MM-DD
+ * @param {string} [companyData.company_status_csv]
+ * @returns {Promise<{lastID: number, changes: number}>}
+ */
 async function addCompany(companyData) {
 	const {
 		company_name,
@@ -536,18 +517,38 @@ async function addCompany(companyData) {
 		website = null,
 		headquarters_location = null,
 		description = null,
-		founded_date = null,
-		employee_count = null,
-		is_public = false,
-		stock_ticker = null,
+		founded_date = null, // Ensure YYYY-MM-DD from CSV's "Founded Year"
+		employee_count = null, // From CSV "Total Headcount"
+		is_public = false, // Default, as not in CSV
+		stock_ticker = null, // Default, as not in CSV
+
+		// New fields
+		business_model = null,
+		sub_industry = null,
+		markets = null,
+		mosaic_overall = null,
+		commercial_maturity = null,
+		country = null,
+		total_funding_m = null,
+		latest_funding_amount_m = null,
+		latest_funding_round = null,
+		latest_funding_date = null, // Ensure YYYY-MM-DD from CSV
+		company_status_csv = null,
 	} = companyData;
 
 	if (!company_name) {
 		return Promise.reject(new Error("Company name is required."));
 	}
 
-	const sql = `INSERT INTO Companies (company_name, industry, website, headquarters_location, description, founded_date, employee_count, is_public, stock_ticker)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+	const sql = `INSERT INTO Companies (
+                    company_name, industry, website, headquarters_location, description,
+                    founded_date, employee_count, is_public, stock_ticker,
+                    business_model, sub_industry, markets, mosaic_overall, commercial_maturity,
+                    country, total_funding_m, latest_funding_amount_m, latest_funding_round,
+                    latest_funding_date, company_status_csv
+                 )
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`; // 20 placeholders
+
 	return run(sql, [
 		company_name,
 		industry,
@@ -558,6 +559,17 @@ async function addCompany(companyData) {
 		employee_count,
 		is_public,
 		stock_ticker,
+		business_model,
+		sub_industry,
+		markets,
+		mosaic_overall,
+		commercial_maturity,
+		country,
+		total_funding_m,
+		latest_funding_amount_m,
+		latest_funding_round,
+		latest_funding_date,
+		company_status_csv,
 	]);
 }
 
@@ -585,21 +597,11 @@ async function addProduct(productData) {
 	} = productData;
 
 	if (!company_id || !product_name) {
-		return Promise.reject(
-			new Error("Company ID and Product name are required.")
-		);
+		return Promise.reject(new Error("Company ID and Product name are required."));
 	}
 	const sql = `INSERT INTO Products (company_id, product_name, description, category, launch_date, product_url, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?)`;
-	return run(sql, [
-		company_id,
-		product_name,
-		description,
-		category,
-		launch_date,
-		product_url,
-		status,
-	]);
+	return run(sql, [company_id, product_name, description, category, launch_date, product_url, status]);
 }
 
 /**
@@ -626,45 +628,19 @@ async function addRelationship(relationshipData) {
 	} = relationshipData;
 
 	if (!company1_id || !company2_id || !relationship_type) {
-		return Promise.reject(
-			new Error(
-				"Company1 ID, Company2 ID, and Relationship Type are required."
-			)
-		);
+		return Promise.reject(new Error("Company1 ID, Company2 ID, and Relationship Type are required."));
 	}
 	if (company1_id === company2_id) {
-		return Promise.reject(
-			new Error("Company1 ID and Company2 ID cannot be the same.")
-		);
+		return Promise.reject(new Error("Company1 ID and Company2 ID cannot be the same."));
 	}
-	const validTypes = [
-		"Partner",
-		"Vendor",
-		"Customer",
-		"Competitor",
-		"Investor",
-	];
+	const validTypes = ["Partner", "Vendor", "Customer", "Competitor", "Investor"];
 	if (!validTypes.includes(relationship_type)) {
-		return Promise.reject(
-			new Error(
-				`Invalid relationship type. Must be one of: ${validTypes.join(
-					", "
-				)}`
-			)
-		);
+		return Promise.reject(new Error(`Invalid relationship type. Must be one of: ${validTypes.join(", ")}`));
 	}
 
 	const sql = `INSERT INTO Relationships (company1_id, company2_id, relationship_type, start_date, end_date, status, description)
                  VALUES (?, ?, ?, ?, ?, ?, ?)`;
-	return run(sql, [
-		company1_id,
-		company2_id,
-		relationship_type,
-		start_date,
-		end_date,
-		status,
-		description,
-	]);
+	return run(sql, [company1_id, company2_id, relationship_type, start_date, end_date, status, description]);
 }
 
 /**
@@ -693,14 +669,7 @@ async function addNewsEvent(newsEventData) {
 	}
 	const sql = `INSERT INTO News_Events (title, url, source_name, publication_date, summary, sentiment)
                  VALUES (?, ?, ?, ?, ?, ?)`;
-	return run(sql, [
-		title,
-		url,
-		source_name,
-		publication_date,
-		summary,
-		sentiment,
-	]);
+	return run(sql, [title, url, source_name, publication_date, summary, sentiment]);
 }
 
 /**
@@ -714,9 +683,7 @@ async function addNewsEvent(newsEventData) {
 async function linkCompanyToNewsEvent(linkData) {
 	const { company_id, news_event_id, role_in_event = null } = linkData;
 	if (!company_id || !news_event_id) {
-		return Promise.reject(
-			new Error("Company ID and News Event ID are required.")
-		);
+		return Promise.reject(new Error("Company ID and News Event ID are required."));
 	}
 	const sql = `INSERT INTO Company_News_Events_Link (company_id, news_event_id, role_in_event)
                  VALUES (?, ?, ?)`;
@@ -726,13 +693,7 @@ async function linkCompanyToNewsEvent(linkData) {
 // --- UPDATE Functions ---
 
 // Helper for dynamic UPDATE queries
-function buildUpdateQuery(
-	tableName,
-	idColumnName,
-	idValue,
-	data,
-	allowedFields
-) {
+function buildUpdateQuery(tableName, idColumnName, idValue, data, allowedFields) {
 	const fieldsToUpdate = [];
 	const values = [];
 
@@ -748,12 +709,11 @@ function buildUpdateQuery(
 	}
 
 	values.push(idValue); // Add the ID for the WHERE clause
-	const sql = `UPDATE ${tableName} SET ${fieldsToUpdate.join(
-		", "
-	)} WHERE ${idColumnName} = ?`;
+	const sql = `UPDATE ${tableName} SET ${fieldsToUpdate.join(", ")} WHERE ${idColumnName} = ?`;
 	return { sql, values };
 }
 
+// In database.js
 const COMPANY_UPDATABLE_FIELDS = [
 	"company_name",
 	"industry",
@@ -764,6 +724,18 @@ const COMPANY_UPDATABLE_FIELDS = [
 	"employee_count",
 	"is_public",
 	"stock_ticker",
+	// ADD YOUR NEW FIELDS HERE:
+	"business_model",
+	"sub_industry",
+	"markets",
+	"mosaic_overall",
+	"commercial_maturity",
+	"country",
+	"total_funding_m",
+	"latest_funding_amount_m",
+	"latest_funding_round",
+	"latest_funding_date",
+	"company_status_csv",
 ];
 async function updateCompany(companyId, companyData) {
 	const { sql, values, error } = buildUpdateQuery(
@@ -800,12 +772,7 @@ async function updateProduct(productId, productData) {
 
 // For relationships, updating company1_id, company2_id, or relationship_type is often complex
 // (better to delete and create new). This focuses on other attributes.
-const RELATIONSHIP_UPDATABLE_FIELDS = [
-	"start_date",
-	"end_date",
-	"status",
-	"description",
-];
+const RELATIONSHIP_UPDATABLE_FIELDS = ["start_date", "end_date", "status", "description"];
 async function updateRelationship(relationshipId, relationshipData) {
 	const { sql, values, error } = buildUpdateQuery(
 		"Relationships",
@@ -818,14 +785,7 @@ async function updateRelationship(relationshipId, relationshipData) {
 	return run(sql, values);
 }
 
-const NEWS_EVENT_UPDATABLE_FIELDS = [
-	"title",
-	"url",
-	"source_name",
-	"publication_date",
-	"summary",
-	"sentiment",
-];
+const NEWS_EVENT_UPDATABLE_FIELDS = ["title", "url", "source_name", "publication_date", "summary", "sentiment"];
 async function updateNewsEvent(newsEventId, newsEventData) {
 	const { sql, values, error } = buildUpdateQuery(
 		"News_Events",
@@ -865,19 +825,13 @@ function run(sql, params = []) {
 			// Attempt to connect if db is not initialized
 			// This assumes connectDb() is available and initializes the module 'db' variable
 			// Or, more robustly, ensure initDb() has been called by the application's startup sequence.
-			console.warn(
-				"Database not initialized. Attempting to connect. Ensure initDb() was called."
-			);
+			console.warn("Database not initialized. Attempting to connect. Ensure initDb() was called.");
 			connectDb()
 				.then(() => {
 					// connectDb should ideally be exported or part of the module's init flow
 					performRun();
 				})
-				.catch((err) =>
-					reject(
-						new Error("Database connection failed: " + err.message)
-					)
-				);
+				.catch((err) => reject(new Error("Database connection failed: " + err.message)));
 		} else {
 			performRun();
 		}
@@ -897,6 +851,13 @@ function run(sql, params = []) {
 		}
 	});
 }
+// In database.js
+async function getCompanyIdAndNameList() {
+	return getAll(
+		"SELECT company_id AS id, company_name AS name FROM Companies WHERE company_id < 6075 ORDER BY company_name"
+	);
+}
+// Don't forget to export it in module.exports
 
 module.exports = {
 	connectDb,
@@ -926,7 +887,8 @@ module.exports = {
 	// Link Getters
 	getNewsEventsByCompanyId,
 	getCompaniesByNewsEventId,
-
+	// Company ID and Name List
+	getCompanyIdAndNameList,
 	// --- New Mutator Functions ---
 	// Inserts
 	addCompany,

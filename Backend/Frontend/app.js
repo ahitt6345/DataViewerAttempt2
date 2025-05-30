@@ -37,16 +37,11 @@ function loadBuildingTextures() {
 	// Ensure these textures are in your `public/textures` folder
 	// Load building facade texture
 	try {
-		buildingFacadeTexture = textureLoader.load(
-			"textures/building_texture.png"
-		);
+		buildingFacadeTexture = textureLoader.load("textures/building_texture.png");
 		buildingFacadeTexture.wrapS = THREE.RepeatWrapping;
 		buildingFacadeTexture.wrapT = THREE.RepeatWrapping;
 	} catch (e) {
-		console.error(
-			"Failed to load building facade texture. Make sure the path is correct and the file exists.",
-			e
-		);
+		console.error("Failed to load building facade texture. Make sure the path is correct and the file exists.", e);
 		buildingFacadeTexture = null;
 	}
 
@@ -56,10 +51,7 @@ function loadBuildingTextures() {
 		rooftopTexture.wrapS = THREE.RepeatWrapping;
 		rooftopTexture.wrapT = THREE.RepeatWrapping;
 	} catch (e) {
-		console.error(
-			"Failed to load rooftop texture. Make sure the path is correct and the file exists.",
-			e
-		);
+		console.error("Failed to load rooftop texture. Make sure the path is correct and the file exists.", e);
 		rooftopTexture = null;
 	}
 
@@ -71,26 +63,18 @@ function loadBuildingTextures() {
 		windowTexture.wrapT = THREE.RepeatWrapping;
 		windowTexture.repeat.set(0.8, 1); // Adjust these values as needed for your desired zoom level
 	} catch (e) {
-		console.error(
-			"Failed to load window texture. Make sure the path is correct and the file exists.",
-			e
-		);
+		console.error("Failed to load window texture. Make sure the path is correct and the file exists.", e);
 		windowTexture = null;
 	}
 	try {
 		// ... (existing texture loading for buildingFacadeTexture, rooftopTexture, windowTexture)
 
-		islandSurfaceTexture = textureLoader.load(
-			"textures/island_texture.png"
-		); // Replace with your texture
+		islandSurfaceTexture = textureLoader.load("textures/island_texture.png"); // Replace with your texture
 		islandSurfaceTexture.wrapS = THREE.RepeatWrapping;
 		islandSurfaceTexture.wrapT = THREE.RepeatWrapping;
 		console.log("Island surface texture loading...");
 	} catch (e) {
-		console.error(
-			"Failed to load island textures. Make sure paths are correct and files exist.",
-			e
-		);
+		console.error("Failed to load island textures. Make sure paths are correct and files exist.", e);
 		// ... (existing fallbacks)
 		islandSurfaceTexture = null;
 	}
@@ -154,8 +138,7 @@ function initThreeJS() {
 						tempSpan.innerHTML = hudLeft.innerHTML + line;
 						document.body.appendChild(tempSpan);
 
-						const fitsInLeft =
-							tempSpan.offsetHeight <= hudLeft.clientHeight;
+						const fitsInLeft = tempSpan.offsetHeight <= hudLeft.clientHeight;
 						document.body.removeChild(tempSpan);
 
 						if (fitsInLeft) {
@@ -172,12 +155,7 @@ function initThreeJS() {
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0x87ceeb); // Bright blue sky (Sky Blue)
 	loadBuildingTextures(); // Load textures before creating objects
-	camera = new THREE.PerspectiveCamera(
-		75,
-		container.clientWidth / container.clientHeight,
-		0.1,
-		10000
-	);
+	camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 10000);
 	camera.position.set(0, 15 * 10, 20 * 10); // Adjusted camera position to look down a bit
 	camera.lookAt(0, 0, 0);
 
@@ -214,12 +192,9 @@ function initThreeJS() {
 		water = new Water(waterGeometry, {
 			textureWidth: 256, // Quality of reflection/refraction. Lower for better performance.
 			textureHeight: 256,
-			waterNormals: textureLoader.load(
-				"textures/water/waternormal.jpg",
-				function (texture) {
-					texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-				}
-			),
+			waterNormals: textureLoader.load("textures/water/waternormal.jpg", function (texture) {
+				texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+			}),
 			sunDirection: directionalLight.position.clone().normalize(),
 			sunColor: 0xffffff,
 			waterColor: 0x003e5f, // Bluish water
@@ -231,9 +206,7 @@ function initThreeJS() {
 		water.receiveShadow = false; // Water can receive shadows (e.g., from islands if they are tall enough)
 		scene.add(water);
 	} else {
-		console.error(
-			"THREE.Water is not defined. Make sure Water.js is loaded correctly."
-		);
+		console.error("THREE.Water is not defined. Make sure Water.js is loaded correctly.");
 		// Fallback: simple blue plane if Water.js fails to load
 		const fallbackWaterMat = new THREE.MeshStandardMaterial({
 			color: 0x003e5f,
@@ -277,12 +250,7 @@ function initThreeJS() {
 			orbitControls.enablePan = true; // Allow panning
 		}
 		// Update water time for wave animation
-		if (
-			water &&
-			water.material &&
-			water.material.uniforms &&
-			water.material.uniforms["time"]
-		) {
+		if (water && water.material && water.material.uniforms && water.material.uniforms["time"]) {
 			water.material.uniforms["time"].value += 0.2 / 60.0; // This line is crucial!
 		}
 		// scene.traverse((obj) => {
@@ -307,17 +275,13 @@ function initThreeJS() {
 				const billboardPivot = object;
 				const buildingGroup = billboardPivot.parent; // This is the companyBuilding group
 
-				const buildingHalfWidth =
-					billboardPivot.userData.buildingHalfWidth;
-				const buildingHalfDepth =
-					billboardPivot.userData.buildingHalfDepth;
+				const buildingHalfWidth = billboardPivot.userData.buildingHalfWidth;
+				const buildingHalfDepth = billboardPivot.userData.buildingHalfDepth;
 				// billboardPivot.position.y is already set to the roof height correctly in addSmartBillboardV2
 				const pivotYOnRoof = billboardPivot.position.y;
 
 				// 1. Get camera's position in the local coordinate system of the BUILDING.
-				const buildingWorldMatrixInverse = new THREE.Matrix4()
-					.copy(buildingGroup.matrixWorld)
-					.invert();
+				const buildingWorldMatrixInverse = new THREE.Matrix4().copy(buildingGroup.matrixWorld).invert();
 				const cameraPositionLocalToBuilding = cameraWorldPosition
 					.clone()
 					.applyMatrix4(buildingWorldMatrixInverse);
@@ -355,11 +319,7 @@ function initThreeJS() {
 
 				// 3. Smoothly interpolate pivot's position and rotation to the target state
 				billboardPivot.position.lerp(targetPosition, 10 * delta); // Adjust 10*delta for desired snap speed
-				billboardPivot.rotation.y = lerpAngle(
-					billboardPivot.rotation.y,
-					targetPivotYRotation,
-					10 * delta
-				); // Use corrected lerpAngle
+				billboardPivot.rotation.y = lerpAngle(billboardPivot.rotation.y, targetPivotYRotation, 10 * delta); // Use corrected lerpAngle
 
 				// For this step, keep the billboardMesh itself (the visual plane) upright without hinging or other local rotations.
 				const billboardMesh = billboardPivot.userData.billboardMesh;
@@ -483,12 +443,7 @@ function clearDynamicSceneObjects() {
 		focusCompanyLight = null;
 	}
 }
-function createSpriteLabel(
-	text,
-	companyId,
-	textColor = "white",
-	backgroundColor = "rgba(0,0,0,0.7)"
-) {
+function createSpriteLabel(text, companyId, textColor = "white", backgroundColor = "rgba(0,0,0,0.7)") {
 	function abbreviateCompanyName(name) {
 		const abbreviations = [
 			{ regex: /\bCorporation\b/gi, abbr: "Corp." },
@@ -571,9 +526,7 @@ async function fetchCompanyData(companyId) {
 		const response = await fetch(`/api/company/${companyId}/graph`);
 		if (!response.ok) {
 			const errorData = await response.json();
-			throw new Error(
-				errorData.error || `HTTP error! status: ${response.status}`
-			);
+			throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
 		}
 		const data = await response.json();
 		// dataOutput.textContent = JSON.stringify(data, null, 2);
@@ -586,12 +539,7 @@ async function fetchCompanyData(companyId) {
 	}
 }
 // Helper to create a material with the text texture
-function createTexturedMaterialForRoofSide(
-	text,
-	companyId,
-	sideWidth,
-	sideHeight
-) {
+function createTexturedMaterialForRoofSide(text, companyId, sideWidth, sideHeight) {
 	const canvas = document.createElement("canvas");
 	const context = canvas.getContext("2d");
 	// Make canvas resolution proportional to the 3D dimensions for clarity
@@ -612,10 +560,7 @@ function createTexturedMaterialForRoofSide(
 	// Add a semi-transparent black overlay to darken the background for better text contrast
 	context.fillStyle = "rgba(0,0,0,0.5)";
 	context.fillRect(0, 0, canvas.width, canvas.height);
-	const fontSize = Math.min(
-		canvas.height * 0.6,
-		canvas.width / (text.length * 0.55)
-	);
+	const fontSize = Math.min(canvas.height * 0.6, canvas.width / (text.length * 0.55));
 	context.font = `Bold ${fontSize}px Arial`;
 	context.fillStyle = "white";
 	context.textAlign = "center";
@@ -648,10 +593,7 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 	}
 
 	const bodyMaterial = new THREE.MeshStandardMaterial({
-		map:
-			buildingFacadeTexture instanceof THREE.Texture
-				? buildingFacadeTexture
-				: undefined,
+		map: buildingFacadeTexture instanceof THREE.Texture ? buildingFacadeTexture : undefined,
 		roughness: 0.8,
 		metalness: 0.1,
 		// color: buildingFacadeTexture ? 0xffffff : 0xcccccc // Use white if texture loads, else gray
@@ -663,11 +605,7 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 
 	// Roof
 	const roofHeight = height * 0.15;
-	const roofGeometry = new THREE.BoxGeometry(
-		width * 1.05,
-		roofHeight,
-		depth * 1.05
-	); // Slightly larger roof
+	const roofGeometry = new THREE.BoxGeometry(width * 1.05, roofHeight, depth * 1.05); // Slightly larger roof
 
 	// if (rooftopTexture) {
 	// 	rooftopTexture.repeat.set(width / 4, depth / 4); // Adjust
@@ -735,10 +673,7 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 	if (windowTexture) {
 		const windowPlaneHeight = bodyHeight * 0.7;
 		const windowPlaneWidth = width * 0.8;
-		const windowPlaneGeometry = new THREE.PlaneGeometry(
-			windowPlaneWidth,
-			windowPlaneHeight
-		);
+		const windowPlaneGeometry = new THREE.PlaneGeometry(windowPlaneWidth, windowPlaneHeight);
 		windowTexture.repeat.set(windowPlaneWidth / 2, windowPlaneHeight / 2); // Adjust as needed
 
 		const windowMaterial = new THREE.MeshStandardMaterial({
@@ -751,10 +686,7 @@ function createProceduralBuilding(width, height, depth, companyDetails) {
 			// emissiveMap: windowTexture, // If you have an emissive map for just the lights
 		});
 
-		const windowPlaneF = new THREE.Mesh(
-			windowPlaneGeometry,
-			windowMaterial
-		);
+		const windowPlaneF = new THREE.Mesh(windowPlaneGeometry, windowMaterial);
 		windowPlaneF.position.set(0, bodyHeight / 2, depth / 2 + 0.01); // Front
 		windowPlaneF.userData.companyDetails = companyDetails; // Store company details in the mesh for later reference
 		buildingGroup.add(windowPlaneF);
@@ -814,15 +746,10 @@ function updateSceneWithObjects(data) {
 
 	// const focusBuilding = createProceduralBuilding(focusWidth, focusBuildingHeight, focusDepth, focusCompany.city_metaphor_style);
 	// For the focus company, let's use a simplified unique style for now, or customize createProceduralBuilding further
-	const focusGeo = new THREE.BoxGeometry(
-		focusWidth,
-		focusBuildingHeight,
-		focusDepth
-	);
+	const focusGeo = new THREE.BoxGeometry(focusWidth, focusBuildingHeight, focusDepth);
 	const focusMat = new THREE.MeshStandardMaterial({
 		color:
-			focusCompany.city_metaphor_style &&
-			focusCompany.city_metaphor_style.includes("alpha")
+			focusCompany.city_metaphor_style && focusCompany.city_metaphor_style.includes("alpha")
 				? 0xcc3333
 				: 0xdaa520, // Gold or Red
 		roughness: 0.5,
@@ -845,11 +772,7 @@ function updateSceneWithObjects(data) {
 	focusCompanyLight.castShadow = true; // Focus light should also cast shadow
 	focusCompanyLight.shadow.mapSize.width = 1024; // default 512
 	focusCompanyLight.shadow.mapSize.height = 1024; // default 512
-	focusCompanyLight.position.set(
-		focusWidth * 0.7,
-		focusBuildingHeight + 2,
-		focusDepth * 0.7
-	);
+	focusCompanyLight.position.set(focusWidth * 0.7, focusBuildingHeight + 2, focusDepth * 0.7);
 	scene.add(focusCompanyLight);
 
 	// Add special lighting for the focus company
@@ -873,12 +796,11 @@ function updateSceneWithObjects(data) {
 
 	// --- 3. Define layout parameters and position districts (with islands) ---
 	const districtTypes = Object.keys(districts);
-	const angleIncrement =
-		districtTypes.length > 0 ? (2 * Math.PI) / districtTypes.length : 0;
+	const angleIncrement = districtTypes.length > 0 ? (2 * Math.PI) / districtTypes.length : 0;
 
 	const MAX_PROXIMITY_DISTANCE = 20 * scaleFactor;
 	const MIN_PROXIMITY_DISTANCE = 8 * scaleFactor; // Increased min slightly to give islands space
-	const CLUSTER_SPREAD_RADIUS = 3.0 * scaleFactor; // Base radius for building cluster, island will be larger
+	const CLUSTER_SPREAD_RADIUS = 10.0 * scaleFactor; // Base radius for building cluster, island will be larger
 	const ISLAND_HEIGHT = 0.5 * scaleFactor; // Thickness of the island pedestal
 	const ISLAND_Y_OFFSET = 0.1 * scaleFactor; // How much the base of the island is lifted from y=0
 
@@ -892,18 +814,10 @@ function updateSceneWithObjects(data) {
 		// ... (avgStrength and districtDistance calculation remains the same) ...
 		let avgStrength = 0.5;
 		if (districtData.strengths.length > 0) {
-			let sumStrengths = districtData.strengths.reduce(
-				(a, b) => a + b,
-				0
-			);
-			avgStrength = Math.max(
-				0,
-				Math.min(1, sumStrengths / districtData.strengths.length)
-			);
+			let sumStrengths = districtData.strengths.reduce((a, b) => a + b, 0);
+			avgStrength = Math.max(0, Math.min(1, sumStrengths / districtData.strengths.length));
 		}
-		let districtDistance =
-			MAX_PROXIMITY_DISTANCE -
-			avgStrength * (MAX_PROXIMITY_DISTANCE - MIN_PROXIMITY_DISTANCE);
+		let districtDistance = MAX_PROXIMITY_DISTANCE - avgStrength * (MAX_PROXIMITY_DISTANCE - MIN_PROXIMITY_DISTANCE);
 
 		const angle = index * angleIncrement;
 		const districtX = districtDistance * Math.cos(angle);
@@ -914,12 +828,7 @@ function updateSceneWithObjects(data) {
 
 		// --- Create the Island/Pedestal ---
 		const islandVisualRadius = CLUSTER_SPREAD_RADIUS + 1.0; // Island slightly larger than building cluster
-		const islandGeometry = new THREE.CylinderGeometry(
-			islandVisualRadius,
-			islandVisualRadius,
-			ISLAND_HEIGHT,
-			32
-		);
+		const islandGeometry = new THREE.CylinderGeometry(islandVisualRadius, islandVisualRadius, ISLAND_HEIGHT, 32);
 		// Optional: Box island
 		// const islandGeometry = new THREE.BoxGeometry(islandVisualRadius * 2, ISLAND_HEIGHT, islandVisualRadius * 2);
 
@@ -931,10 +840,7 @@ function updateSceneWithObjects(data) {
 		});
 		if (islandSurfaceTexture) {
 			// Adjust texture tiling for the island surface
-			islandSurfaceTexture.repeat.set(
-				islandVisualRadius / 3,
-				islandVisualRadius / 3
-			); // Tweak as needed
+			islandSurfaceTexture.repeat.set(islandVisualRadius / 3, islandVisualRadius / 3); // Tweak as needed
 		}
 
 		const islandMesh = new THREE.Mesh(islandGeometry, islandMaterial);
@@ -951,42 +857,23 @@ function updateSceneWithObjects(data) {
 			const buildingH = (1.8 + Math.random() * 1.2) * scaleFactor; // Slightly shorter on average due to island height
 			const buildingD = 1.2 * scaleFactor;
 
-			const companyBuilding = createProceduralBuilding(
-				buildingW,
-				buildingH,
-				buildingD,
-				company
-			);
+			const companyBuilding = createProceduralBuilding(buildingW, buildingH, buildingD, company);
 
-			const buildingClusterRadius =
-				CLUSTER_SPREAD_RADIUS * (0.4 + Math.random() * 0.6);
+			const buildingClusterRadius = CLUSTER_SPREAD_RADIUS * (0.4 + Math.random() * 0.6);
 			const buildingAngle =
-				(compIndex / Math.max(1, districtData.companies.length)) *
-					2 *
-					Math.PI +
-				(Math.random() - 0.5) * 0.7;
+				(compIndex / Math.max(1, districtData.companies.length)) * 2 * Math.PI + (Math.random() - 0.5) * 0.7;
 
 			const buildingX = buildingClusterRadius * Math.cos(buildingAngle);
 			const buildingZ = buildingClusterRadius * Math.sin(buildingAngle);
 
 			// The companyBuilding group's base is at its local y=0.
 			// We want it to sit on top of the island. The island's top surface is at y=ISLAND_HEIGHT within the districtGroup.
-			companyBuilding.position.set(
-				buildingX,
-				BUILDING_BASE_HEIGHT_ON_ISLAND,
-				buildingZ
-			);
+			companyBuilding.position.set(buildingX, BUILDING_BASE_HEIGHT_ON_ISLAND, buildingZ);
 
 			districtGroup.add(companyBuilding);
 
 			// Add a smart billboard on top of the building
-			addSmartBillboardV2(
-				companyBuilding,
-				company,
-				buildingW,
-				buildingH,
-				scaleFactor
-			);
+			addSmartBillboardV2(companyBuilding, company, buildingW, buildingH, scaleFactor);
 		});
 
 		scene.add(districtGroup);
@@ -1017,10 +904,7 @@ function createVisualBillboardMesh(
 	context.fillStyle = backgroundColor;
 	context.fillRect(0, 0, canvas.width, canvas.height);
 
-	const fontSize = Math.min(
-		canvasHeight * 0.6,
-		canvasWidth / (text.length * 0.6)
-	); // Dynamic font size
+	const fontSize = Math.min(canvasHeight * 0.6, canvasWidth / (text.length * 0.6)); // Dynamic font size
 	context.font = `Bold ${fontSize}px Arial, sans-serif`;
 	context.fillStyle = textColor;
 	context.textAlign = "center";
@@ -1037,21 +921,11 @@ function createVisualBillboardMesh(
 	return new THREE.Mesh(geometry, material);
 }
 
-function addSmartBillboardV2(
-	companyBuildingGroup,
-	companyDetails,
-	buildingW,
-	buildingTotalHeight,
-	scaleFactor
-) {
+function addSmartBillboardV2(companyBuildingGroup, companyDetails, buildingW, buildingTotalHeight, scaleFactor) {
 	const billboardWidth = buildingW * 0.7; // Example: 70% of building width
 	const billboardHeight = billboardWidth / 4; // Example: 4:1 aspect ratio
 
-	const billboardMesh = createVisualBillboardMesh(
-		companyDetails.company_name,
-		billboardWidth,
-		billboardHeight
-	);
+	const billboardMesh = createVisualBillboardMesh(companyDetails.company_name, billboardWidth, billboardHeight);
 	billboardMesh.position.y = billboardHeight / 2; // So its bottom edge is at the pivot's origin
 
 	const billboardPivot = new THREE.Object3D();

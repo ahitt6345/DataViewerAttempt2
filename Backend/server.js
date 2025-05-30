@@ -6,52 +6,43 @@ const db = require("./database"); // Import your database module
 
 const app = express();
 const port = 3000;
-app.use(express.json()); // <--- Add this line HERE
+app.use(express.json()); // Good, this is necessary for req.body
 
 // Initialize the database when the server starts
 async function initializeDatabase() {
 	try {
-		await db.initDb(); // This creates tables if they don't exist
+		await db.initDb(); // This creates/updates tables as per your database.js
 		console.log("Database initialized successfully.");
-		// You could potentially load initial data from CSVs into the DB here if needed, one time.
-		// For now, we'll assume data is added via API endpoints.
 	} catch (err) {
 		console.error("Failed to initialize database:", err);
-		process.exit(1); // Exit if DB fails to initialize
+		process.exit(1);
 	}
 }
-// Serve static files (HTML, CSS, frontend JS) from a 'public' directory
+
+// Serve static files
 app.use(express.static(path.join(__dirname, "Frontend")));
-//server threejs as 'three'
 app.use(
 	"/three",
 	(req, res, next) => {
-		console.log(`Serving /three static file: ${req.url}`);
+		// console.log(`Serving /three static file: ${req.url}`); // Can be verbose, optional
 		next();
 	},
 	express.static(path.join(__dirname, "../node_modules/three/"))
 );
-// Backend/server.js (continued)
+
+// Endpoint to get company names and IDs (for dropdowns, etc.)
+// In server.js
 app.get("/api/company/getCompanyNamesAndIds", async (req, res) => {
-	// Fetch company names and IDs from the database
 	try {
-		/*
-			TODO: Optimize this query by creating a dedicated SQL statement
-			that directly selects only company names and IDs from the database,
-			instead of fetching all company data and filtering it in JavaScript.
-		*/
-		const companies = await db.getAllCompanies();
-		const companyList = companies.map((company) => ({
-			id: company.company_id,
-			name: company.company_name,
-		}));
+		const companyList = await db.getCompanyIdAndNameList(); // Use the new optimized function
 		res.json(companyList);
 	} catch (error) {
 		console.error("Error fetching company names and IDs:", error);
 		res.status(500).json({ error: "Internal server error" });
 	}
 });
-// --- API Endpoints for Data Retrieval ---
+
+// API Endpoint for Graph Data
 app.get("/api/company/:companyId/graph", async (req, res) => {
 	const focusCompanyId = parseInt(req.params.companyId);
 	if (isNaN(focusCompanyId)) {
@@ -59,25 +50,19 @@ app.get("/api/company/:companyId/graph", async (req, res) => {
 	}
 
 	try {
-		const focusCompany = await db.getCompanyById(focusCompanyId); // Using DB function
+		const focusCompany = await db.getCompanyById(focusCompanyId);
 		if (!focusCompany) {
 			return res.status(404).json({ error: "Company not found" });
 		}
+		// focusCompany will now contain all the new fields from the expanded schema.
+		// Your frontend needs to be aware if it wants to use/display these.
 
-		// Fetch relationships. getRelatedCompaniesByType is suitable here.
-		// You might want to fetch all types of relationships or specific ones.
-		// For this example, let's assume we want all relationship types.
-		// We'll need to iterate through possible types or have a more generic function if needed.
-
-		// A more direct way is to get all relationships and then process them:
-		const directRelationships = await db.getRelationshipsForCompany(
-			focusCompanyId
-		); // Gets raw relationship entries
+		const directRelationships = await db.getRelationshipsForCompany(focusCompanyId);
 
 		const relatedCompanyEntries = await Promise.all(
 			directRelationships.map(async (r) => {
 				let relatedCompanyId;
-				let relationshipDirection; // 'source_to_target' or 'target_to_source'
+				let relationshipDirection;
 
 				if (r.company1_id === focusCompanyId) {
 					relatedCompanyId = r.company2_id;
@@ -87,33 +72,28 @@ app.get("/api/company/:companyId/graph", async (req, res) => {
 					relationshipDirection = "incoming";
 				}
 
-				const relatedCompany = await db.getCompanyById(
-					relatedCompanyId
-				);
+				const relatedCompany = await db.getCompanyById(relatedCompanyId);
+				// relatedCompany will also contain all the new fields.
 
 				return {
 					relationship_id: r.relationship_id,
-					company1_id: r.company1_id, // Original company1
-					company2_id: r.company2_id, // Original company2
-					relationship_type: r.relationship_type, // The defined type
+					company1_id: r.company1_id,
+					company2_id: r.company2_id,
+					relationship_type: r.relationship_type,
 					relationship_status: r.status,
 					description: r.description,
 					start_date: r.start_date,
-					// Your frontend might need to know the "other" company and how it relates
 					connected_company_id: relatedCompanyId,
-					connected_company_details: relatedCompany,
+					// connected_company_details: relatedCompany, // This key is good
 					direction_from_focus: relationshipDirection,
-					// The original server.js had `relationship_with_focus` and `related_company_details`
-					// The structure below attempts to mimic that intent based on the new DB structure
-					relationship_with_focus: r.relationship_type, // Type from perspective of the relationship record
-					related_company_details: relatedCompany, // Details of the company at the other end
+					relationship_with_focus: r.relationship_type,
+					related_company_details: relatedCompany, // This key is good
 				};
 			})
 		);
 
 		res.json({
 			focus_company: focusCompany,
-			// The key in your original server.js was 'related_companies'
 			related_companies: relatedCompanyEntries,
 		});
 	} catch (error) {
@@ -121,16 +101,16 @@ app.get("/api/company/:companyId/graph", async (req, res) => {
 		res.status(500).json({ error: "Internal server error" });
 	}
 });
-// --- API Endpoints for Data Mutation ---
 
 // Add a new company
 app.post("/api/companies", async (req, res) => {
 	try {
-		const companyData = req.body;
-		// Add validation for companyData here if needed
+		const companyData = req.body; // This can now contain all the new fields
 		if (!companyData.company_name) {
 			return res.status(400).json({ error: "Company name is required" });
 		}
+		// The `db.addCompany` function in database.js is already updated
+		// to handle all new fields passed in companyData.
 		const result = await db.addCompany(companyData);
 		res.status(201).json({
 			message: "Company added successfully",
@@ -139,18 +119,19 @@ app.post("/api/companies", async (req, res) => {
 	} catch (error) {
 		console.error("Error adding company:", error);
 		if (error.message.includes("UNIQUE constraint failed")) {
-			return res
-				.status(409)
-				.json({ error: "Company name already exists." });
+			return res.status(409).json({ error: "Company name already exists." });
 		}
 		res.status(500).json({ error: "Failed to add company" });
 	}
 });
 
-// Get all companies (useful for populating dropdowns in frontend, etc.)
+// Get all companies
 app.get("/api/companies", async (req, res) => {
 	try {
 		const companies = await db.getAllCompanies();
+		// Each company object in the 'companies' array will now include
+		// all the new fields (business_model, total_funding_m, etc.).
+		// Your frontend should be prepared for this richer data.
 		res.json(companies);
 	} catch (error) {
 		console.error("Error fetching all companies:", error);
@@ -162,12 +143,7 @@ app.get("/api/companies", async (req, res) => {
 app.post("/api/relationships", async (req, res) => {
 	try {
 		const relationshipData = req.body;
-		// Add validation
-		if (
-			!relationshipData.company1_id ||
-			!relationshipData.company2_id ||
-			!relationshipData.relationship_type
-		) {
+		if (!relationshipData.company1_id || !relationshipData.company2_id || !relationshipData.relationship_type) {
 			return res.status(400).json({
 				error: "company1_id, company2_id, and relationship_type are required.",
 			});
@@ -185,9 +161,7 @@ app.post("/api/relationships", async (req, res) => {
 			});
 		}
 		if (error.message.includes("FOREIGN KEY constraint failed")) {
-			return res
-				.status(400)
-				.json({ error: "Invalid company ID(s) provided." });
+			return res.status(400).json({ error: "Invalid company ID(s) provided." });
 		}
 		res.status(500).json({ error: "Failed to add relationship" });
 	}
@@ -197,15 +171,27 @@ app.post("/api/relationships", async (req, res) => {
 app.put("/api/companies/:companyId", async (req, res) => {
 	try {
 		const companyId = parseInt(req.params.companyId);
-		const companyData = req.body;
+		const companyData = req.body; // This can now contain any of the new fields for update
 		if (isNaN(companyId)) {
 			return res.status(400).json({ error: "Invalid company ID" });
 		}
+
+		// CRITICAL: Ensure COMPANY_UPDATABLE_FIELDS in database.js includes all the new
+		// field names you want to be updatable (e.g., 'business_model', 'total_funding_m').
+		// If they are not in that array, db.updateCompany will ignore them.
 		const result = await db.updateCompany(companyId, companyData);
+
 		if (result.changes === 0) {
-			return res
-				.status(404)
-				.json({ error: "Company not found or no changes made" });
+			// Check if company exists to differentiate between not found and no actual change
+			const companyExists = await db.getCompanyById(companyId);
+			if (!companyExists) {
+				return res.status(404).json({ error: "Company not found" });
+			}
+			return res.status(200).json({
+				message:
+					"No changes made to the company data (data might be the same or no valid fields to update were provided)",
+				changes: 0,
+			});
 		}
 		res.json({
 			message: "Company updated successfully",
@@ -217,25 +203,19 @@ app.put("/api/companies/:companyId", async (req, res) => {
 	}
 });
 
-// --- Product Endpoints ---
+// --- Product Endpoints --- (No direct changes needed due to Company schema update)
 app.post("/api/products", async (req, res) => {
 	try {
 		const productData = req.body;
-		// Basic validation (you can expand this)
 		if (!productData.company_id || !productData.product_name) {
-			return res
-				.status(400)
-				.json({ error: "Company ID and Product Name are required." });
+			return res.status(400).json({ error: "Company ID and Product Name are required." });
 		}
-		// Ensure company_id is an integer (frontend should also ensure this)
 		productData.company_id = parseInt(productData.company_id);
 		if (isNaN(productData.company_id)) {
-			return res
-				.status(400)
-				.json({ error: "Valid Company ID is required." });
+			return res.status(400).json({ error: "Valid Company ID is required." });
 		}
 
-		const result = await db.addProduct(productData); // Assumes db.addProduct exists from database.js
+		const result = await db.addProduct(productData);
 		res.status(201).json({
 			message: "Product added successfully",
 			productId: result.lastID,
@@ -251,31 +231,22 @@ app.post("/api/products", async (req, res) => {
 	}
 });
 
-// --- News/Event Endpoints ---
+// --- News/Event Endpoints --- (No direct changes needed due to Company schema update)
 app.post("/api/news_events", async (req, res) => {
 	try {
 		const newsEventData = req.body;
-		// Basic validation
 		if (!newsEventData.title || !newsEventData.url) {
-			// Example: title and URL are mandatory
-			return res
-				.status(400)
-				.json({ error: "Title and URL are required for news/events." });
+			return res.status(400).json({ error: "Title and URL are required for news/events." });
 		}
-		const result = await db.addNewsEvent(newsEventData); // Assumes db.addNewsEvent exists
+		const result = await db.addNewsEvent(newsEventData);
 		res.status(201).json({
 			message: "News/Event added successfully",
 			newsEventId: result.lastID,
 		});
 	} catch (error) {
 		console.error("Error adding news/event:", error);
-		if (
-			error.message.includes("UNIQUE constraint failed") &&
-			error.message.includes("News_Events.url")
-		) {
-			return res
-				.status(409)
-				.json({ error: "A news/event with this URL already exists." });
+		if (error.message.includes("UNIQUE constraint failed") && error.message.includes("News_Events.url")) {
+			return res.status(409).json({ error: "A news/event with this URL already exists." });
 		}
 		res.status(500).json({ error: "Failed to add news/event" });
 	}
@@ -283,7 +254,7 @@ app.post("/api/news_events", async (req, res) => {
 
 app.get("/api/news_events", async (req, res) => {
 	try {
-		const newsEvents = await db.getAllNewsEvents(); // Assumes db.getAllNewsEvents exists
+		const newsEvents = await db.getAllNewsEvents();
 		res.json(newsEvents);
 	} catch (error) {
 		console.error("Error fetching news/events:", error);
@@ -291,17 +262,13 @@ app.get("/api/news_events", async (req, res) => {
 	}
 });
 
-// --- Company to News/Event Link Endpoint ---
+// --- Company to News/Event Link Endpoint --- (No direct changes needed)
 app.post("/api/company_news_links", async (req, res) => {
 	try {
 		const linkData = req.body;
-		// Basic validation
 		if (!linkData.company_id || !linkData.news_event_id) {
-			return res
-				.status(400)
-				.json({ error: "Company ID and News Event ID are required." });
+			return res.status(400).json({ error: "Company ID and News Event ID are required." });
 		}
-		// Ensure IDs are integers
 		linkData.company_id = parseInt(linkData.company_id);
 		linkData.news_event_id = parseInt(linkData.news_event_id);
 
@@ -311,7 +278,7 @@ app.post("/api/company_news_links", async (req, res) => {
 			});
 		}
 
-		const result = await db.linkCompanyToNewsEvent(linkData); // Assumes db.linkCompanyToNewsEvent exists
+		const result = await db.linkCompanyToNewsEvent(linkData);
 		res.status(201).json({
 			message: "Company linked to News/Event successfully",
 			linkId: result.lastID,
@@ -332,7 +299,7 @@ app.post("/api/company_news_links", async (req, res) => {
 	}
 });
 
-// Start the server after ensuring DB is initialized
+// Start the server
 initializeDatabase().then(() => {
 	app.listen(port, () => {
 		console.log(`Server running at http://localhost:${port}`);
